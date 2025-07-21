@@ -11,6 +11,7 @@ import { url } from "inspector";
 export class CrawlerController {
     constructor(private readonly crawlerService: CrawlerService) {}
 
+
     @Post('start')
     @UseGuards(AuthGuard('jwt'))
     @ApiBearerAuth()

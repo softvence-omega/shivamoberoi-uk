@@ -6,6 +6,15 @@ import { CacheModule } from '@nestjs/cache-manager';
 import { MongooseModule } from '@nestjs/mongoose';
 import { User, UserSchema } from './schemas/user.schema';
 import { AuthModule } from './auth/auth.module';
+import { Page, PageSchema } from './schemas/page.schema';
+import { Link, LinkSchema } from './schemas/link.schema';
+import { Analysis, AnalysisSchema } from './schemas/analysis.schema';
+import { Content, ContentSchema } from './schemas/content.schema';
+import { Image, ImageSchema } from './schemas/image.schema';
+import { SeoAnalyzerController } from './seo-analyzer/seo-analyzer.controller';
+import { SeoAnalyzerService } from './seo-analyzer/seo-analyzer.service';
+import { CrawlerService } from './crawler/crawler.service';
+import { CrawlerModule } from './crawler/crawler.module';
 
 @Module({
   imports: [
@@ -30,12 +39,20 @@ import { AuthModule } from './auth/auth.module';
       }),
       inject: [ConfigService],
     }),
-    MongooseModule.forFeature([
-      { name: User.name, schema: UserSchema },
-    ]),
+    // MongooseModule.forFeature([
+    //   { name: User.name, schema: UserSchema },
+    //   { name: Page.name, schema: PageSchema },
+    //   { name: Link.name, schema: LinkSchema },
+    //   { name: Image.name, schema: ImageSchema },
+    //   { name: Analysis.name, schema: AnalysisSchema },
+    //   { name: Content.name, schema: ContentSchema },
+    //   // { name: Migration.name, schema: MigrationSchema },
+    // ]),
     AuthModule,
+    CrawlerModule,
+ 
   ],
-  controllers: [AppController],
-  providers: [AppService],
+  controllers: [AppController.CrawlerController, SeoAnalyzerController],
+  providers: [AppService, CrawlerService, SeoAnalyzerService],
 })
 export class AppModule {}
