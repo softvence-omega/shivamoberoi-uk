@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-export async function checlHttpStatus(url: string): Promise<number> {
+export async function checkHttpStatus(url: string): Promise<number> {
   try {
     const response = await axios.head(url, {timeout: 5000});
     return response.status;

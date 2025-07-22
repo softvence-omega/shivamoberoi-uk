@@ -23,11 +23,11 @@ export class AnalyzeSeoDto {
         generatedContent: string;
     }
 
-    export class RefineConrtentDto {
+    export class RefineContentDto {
         @IsUrl({}, { message: "Invalid URL format" })
         @IsString()
         url: string;
 
         @IsString()
-        Content: string;
+        content: string;
     }

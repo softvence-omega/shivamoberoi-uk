@@ -7,14 +7,14 @@ import OpenAI from 'openai'; // Changed import
 import { ConfigService } from '@nestjs/config';
 import { Content, ContentDocument } from 'src/schemas/content.schema';
 
-interface ContentAnalysis {
+ export interface ContentAnalysis {
   readabilityScore: number;
   keywordDensity: number;
   issues: string[];
    keywords?: string[];
 }
 
-interface ContentResult {
+export interface ContentResult {
   url: string;
   content: string;
   analysis: ContentAnalysis;

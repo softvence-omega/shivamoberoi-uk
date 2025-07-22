@@ -4,21 +4,11 @@ import { Cache } from 'cache-manager';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, ClientSession } from 'mongoose';
 import { Page, PageDocument } from '../schemas/page.schema';
-// import { Model } from 'mongoose';
 import { Link, LinkDocument } from '../schemas/link.schema';
 import { Image, ImageDocument } from '../schemas/image.schema';
 import { Analysis, AnalysisDocument } from '../schemas/analysis.schema';
-// import {
-//   Page,
-//   PageDocument,
-//   Link,
-//   LinkDocument,s
-//   Image,
-//   ImageDocument,
-//   Analysis,
-//   AnalysisDocument,
-// } from '../schemas'; // Ensure this path is correct and the file exists with the required exports
 import { HttpService } from '@nestjs/axios';
+import { checkHttpStatus } from '../utils/http-checker';
 // import type { AxiosError } from 'axios';
 
 import * as https from 'https';
@@ -51,6 +41,7 @@ export class SeoAnalyzerService {
     @InjectModel(Page.name) private readonly pageModel: Model<PageDocument>,
     @InjectModel(Link.name) private readonly linkModel: Model<LinkDocument>,
     @InjectModel(Image.name) private readonly imageModel: Model<ImageDocument>,
+    // @InjectModel()
     @InjectModel(Analysis.name)
     private readonly analysisModel: Model<AnalysisDocument>,
     private readonly httpService: HttpService,
@@ -137,7 +128,6 @@ export class SeoAnalyzerService {
       return false;
     }
   }
-
   private async processLinks(
     links: LinkDocument[],
     session: ClientSession,
@@ -146,24 +136,23 @@ export class SeoAnalyzerService {
     const linkCheckPromises: Promise<void>[] = [];
     const activeChecks = new Set<string>();
 
-    // Process links in batches to avoid overwhelming the system
     for (const link of links) {
       if (activeChecks.size >= this.config.maxConcurrentHttpChecks) {
         await Promise.race(linkCheckPromises);
       }
 
-      const checkPromise = this.checkLinkStatus(link)
-        .then(async (isBroken) => {
+      const checkPromise = checkHttpStatus(link.url) // Use the utility function
+        .then(async (status) => {
           try {
             await this.linkModel.updateOne(
               { _id: link._id },
               {
-                status: isBroken ? 'broken' : 'valid',
+                status: status >= 400 ? 'broken' : 'valid',
                 lastChecked: new Date(),
               },
               { session },
             );
-            if (isBroken) {
+            if (status >= 400) {
               brokenLinks.push(link.url);
             }
           } catch (error) {

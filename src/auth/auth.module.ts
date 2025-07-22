@@ -5,8 +5,10 @@ import { JwtModule } from '@nestjs/jwt';
 import { MongooseModule } from '@nestjs/mongoose';
 import { PassportModule } from '@nestjs/passport';
 import { User, UserSchema } from '../schemas/user.schema';
-import { AuthService } from './auth.service';
-import { JwtStrategy } from './jwt.strategy';
+// import { AuthService } from './auth.service';
+import { JwtStrategy } from './jwt.strategy'
+import { AuthService } from "./auth.service";
+import * as bcrypt from "bcrypt";
 
 @Module({
   imports: [
@@ -23,7 +25,13 @@ import { JwtStrategy } from './jwt.strategy';
     CacheModule.register({ isGlobal: true, ttl: 3600 }),
     MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]),
   ],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, JwtStrategy,
+    {
+      provide: "BCRYPT_SERVICE", // Custom token for bcrypt
+      useValue: bcrypt,
+    },
+
+  ],
   exports: [AuthService],
 })
 export class AuthModule {}
