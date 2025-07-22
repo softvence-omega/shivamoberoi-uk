@@ -1,5 +1,5 @@
 import puppeteer from "puppeteer";
-
+import axios from "axios"
 
 export async function  analyzeImage(imageUrl: string) {
     const browser = await puppeteer.launch({headless: true});
