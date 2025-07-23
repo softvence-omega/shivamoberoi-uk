@@ -14,7 +14,8 @@ import { AuthService } from '../auth/auth.service';
 import { MigrationService } from '../migration.service';
 import { RegisterDto, LoginDto } from '../dto/auth.dto';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
-// @ApiTags('analyze')
+
+@ApiTags('analyze')
 @Controller('analyze')
 export class WebsiteAnalyzerController {
   constructor(
@@ -26,14 +27,14 @@ export class WebsiteAnalyzerController {
   @Get('website')
   @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
-  async analyzeWebsite(@Query('url') url: string) {
+  async analyzeWebsite(@Query(ValidationPipe) { url }: { url: string }) {
     return this.websiteAnalyzerService.analyzeWebsite(url);
   }
 
   @Get('keywords')
   @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
-  async searchKeywords(@Query('url') url: string) {
+  async searchKeywords(@Query(ValidationPipe) { url }: { url: string }) {
     return this.websiteAnalyzerService.searchKeywords(url);
   }
 
@@ -45,10 +46,10 @@ export class WebsiteAnalyzerController {
     );
   }
 
-@Post('login')
-async login(@Body(ValidationPipe) loginDto: LoginDto) {
-  return this.authService.login(loginDto.username, loginDto.password);
-}
+  @Post('login')
+  async login(@Body(ValidationPipe) loginDto: LoginDto) {
+    return this.authService.login(loginDto.username, loginDto.password);
+  }
 
   @Put('migrate')
   @UseGuards(AuthGuard('jwt'))

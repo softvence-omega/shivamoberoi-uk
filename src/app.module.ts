@@ -85,13 +85,3 @@ export class AppModule {
   }
 }
 
-
-    // MongooseModule.forFeature([
-    //   { name: User.name, schema: UserSchema },
-    //   { name: Page.name, schema: PageSchema },
-    //   { name: Link.name, schema: LinkSchema },
-    //   { name: Image.name, schema: ImageSchema },
-    //   { name: Analysis.name, schema: AnalysisSchema },
-    //   { name: Content.name, schema: ContentSchema },
-    //   // { name: Migration.name, schema: MigrationSchema },
-    // ]),
