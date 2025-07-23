@@ -1,10 +1,21 @@
-
-import { Controller, Get, Query, Post, Body, UseGuards, ValidationPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Query,
+  Post,
+  Body,
+  UseGuards,
+  ValidationPipe,
+} from '@nestjs/common';
 import { SeoAnalyzerService } from './seo-analyzer.service';
 import { ContentAiService } from '../ai/content-ai.service';
-import { ApiTags,ApiBearerAuth } from "@nestjs/swagger";
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
-import { AnalyzeSeoDto, GenerateContentDto, RefineContentDto } from '../dto/seo.dto';
+import {
+  AnalyzeSeoDto,
+  GenerateContentDto,
+  RefineContentDto,
+} from '../dto/seo.dto';
 
 @ApiTags('seo')
 @Controller('seo')
@@ -24,15 +35,25 @@ export class SeoAnalyzerController {
   @Post('generate-content')
   @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
-  async generateContent(@Body(ValidationPipe) generateContentDto: GenerateContentDto) {
-    return this.contentAiService.generateContent(generateContentDto.url, generateContentDto.keyword);
+  async generateContent(
+    @Body(ValidationPipe) generateContentDto: GenerateContentDto,
+  ) {
+    return this.contentAiService.generateContent(
+      generateContentDto.url,
+      generateContentDto.keyword,
+    );
   }
 
   @Post('refine-content')
   @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
-  async refineContent(@Body(ValidationPipe) refineContentDto: RefineContentDto) {
-    return this.contentAiService.refineContent(refineContentDto.url, refineContentDto.content);
+  async refineContent(
+    @Body(ValidationPipe) refineContentDto: RefineContentDto,
+  ) {
+    return this.contentAiService.refineContent(
+      refineContentDto.url,
+      refineContentDto.content,
+    );
   }
 }
 

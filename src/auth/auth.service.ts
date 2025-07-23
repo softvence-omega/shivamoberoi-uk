@@ -36,6 +36,8 @@ export class AuthService {
       username,
       password: hashedPassword,
     });
+
+    console.log("here is user reg", user)
     return this.generateToken(user);
   }
 

@@ -1,11 +1,20 @@
-import { Controller, Get, Query, Post, Body, Put, UseGuards, ValidationPipe } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Query,
+  Post,
+  Body,
+  Put,
+  UseGuards,
+  ValidationPipe,
+} from '@nestjs/common';
 import { WebsiteAnalyzerService } from './website-analyzer.service';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from '../auth/auth.service';
 import { MigrationService } from '../migration.service';
 import { RegisterDto, LoginDto } from '../dto/auth.dto';
-import { ApiTags,ApiBearerAuth } from "@nestjs/swagger";
-@ApiTags('analyze')
+import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
+// @ApiTags('analyze')
 @Controller('analyze')
 export class WebsiteAnalyzerController {
   constructor(
@@ -30,13 +39,16 @@ export class WebsiteAnalyzerController {
 
   @Post('register')
   async register(@Body(ValidationPipe) registerDto: RegisterDto) {
-    return this.authService.register(registerDto.username, registerDto.password);
+    return this.authService.register(
+      registerDto.username,
+      registerDto.password,
+    );
   }
 
-  @Get('login')
-  async login(@Query(ValidationPipe) loginDto: LoginDto) {
-    return this.authService.validateUser(loginDto.username,);
-  }
+@Post('login')
+async login(@Body(ValidationPipe) loginDto: LoginDto) {
+  return this.authService.login(loginDto.username, loginDto.password);
+}
 
   @Put('migrate')
   @UseGuards(AuthGuard('jwt'))
