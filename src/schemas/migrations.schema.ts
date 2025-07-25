@@ -5,7 +5,7 @@ export type MigrationDocument = Migration & Document;
 
 @Schema()
 export class Migration {
-  @Prop({ required: true, unique: true })
+  @Prop({ required: true })
   name: string;
 
   @Prop({ required: true, default: Date.now })

@@ -21,6 +21,7 @@ export class Content {
         readabilityScore: number;
         keywordDensity: number;
         issues: string[];
+        keywords?: string[];
     };
 
     @Prop({required: true, default: Date.now})

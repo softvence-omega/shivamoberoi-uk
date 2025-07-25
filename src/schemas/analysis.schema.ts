@@ -8,6 +8,9 @@ export class Analysis {
     @Prop({required: true})
     url: string;
 
+    @Prop({ required: true})
+    name: string
+
     @Prop({type: [String], default: []})
     brokenLinks: string[];
 

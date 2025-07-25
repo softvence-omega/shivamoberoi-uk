@@ -33,16 +33,22 @@ export class SeoAnalyzerController {
   }
 
   @Post('generate-content')
-  @UseGuards(AuthGuard('jwt'))
+  // @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
-  async generateContent(
-    @Body(ValidationPipe) generateContentDto: GenerateContentDto,
-  ) {
-    return this.contentAiService.generateContent(
-      generateContentDto.url,
-      generateContentDto.keyword,
-    );
+  async generateContent(@Body(ValidationPipe) generateContentDto: GenerateContentDto) {
+    return this.contentAiService.generateContent(generateContentDto.prompt);
   }
+  // @Post('generate-content')
+  // @UseGuards(AuthGuard('jwt'))
+  // @ApiBearerAuth()
+  // async generateContent(
+  //   @Body(ValidationPipe) generateContentDto: GenerateContentDto,
+  // ) {
+  //   return this.contentAiService.generateContent(
+  //     generateContentDto.url,
+  //     generateContentDto.keyword,
+  //   );
+  // }
 
   @Post('refine-content')
   @UseGuards(AuthGuard('jwt'))

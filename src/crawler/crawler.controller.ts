@@ -12,7 +12,7 @@ export class CrawlerController {
 //   @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
   async startCrawling(@Query('url', ValidationPipe) url: string) {
-    return this.crawlerService.startcrawling(url);
+    return this.crawlerService.startCrawling(url);
   }
 
   @Get('index')
