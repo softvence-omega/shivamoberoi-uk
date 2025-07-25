@@ -40,16 +40,16 @@ export class ContentAiService {
     private readonly contentModel: Model<ContentDocument>,
     private readonly configService: ConfigService,
   ) {
-    const apiKey = this.configService.get<string>('OPENAI_API_KEY');
+    const apiKey = this.configService.get<string>('OPENAI_API_KEY') || process.env.OPENAI_API_KEY;
     if (!apiKey) {
       throw new Error('OPENAI_API_KEY is not set in the environment variables');
     }
-    this.openai = new OpenAI({ apiKey }); // Simplified initialization
+    this.openai = new OpenAI({ apiKey }); 
   }
 
   async generateContent(
     url: string,
-    keywords: string[], // Fixed parameter name (was 'keyword')
+    keywords: string[], 
   ): Promise<ContentResult> {
     const cacheKey = `content_generate_${url}`;
     try {
@@ -87,28 +87,26 @@ export class ContentAiService {
             return cached;
         }
 
-        // 1. Get existing content with proper typing
+       
         const existingContent = await this.contentModel.findOne({ url })
             .lean<{ analysis?: ContentAnalysis & { keywords?: string[] } }>()
             .exec();
 
-        // 2. Extract keywords safely
+        
         const keywords = existingContent?.analysis?.keywords 
             ? [...existingContent.analysis.keywords] 
             : this.extractKeywords(content);
 
-        // 3. Perform analysis
+        
         const analysis = await this.analyzeContent(content, keywords);
         
-        // 4. Generate refined content
+        
         const prompt = this.buildRefinementPrompt(
             content,
             keywords,
             analysis.issues
         );
         const refinedContent = await this.retryableAiCall(prompt);
-
-        // 5. Update database
         const updatedContent = await this.contentModel.findOneAndUpdate(
             { url },
             {
@@ -116,14 +114,13 @@ export class ContentAiService {
                 generatedContent: refinedContent,
                 analysis: {
                     ...analysis,
-                    keywords // Ensure keywords are saved
+                    keywords 
                 },
                 updatedAt: new Date(),
             },
             { upsert: true, new: true, lean: true }
         );
 
-        // 6. Cache and return result
         const result = this.formatResult(url, refinedContent, analysis);
         await this.cacheManager.set(cacheKey, result, this.config.cacheTtl);
         return result;

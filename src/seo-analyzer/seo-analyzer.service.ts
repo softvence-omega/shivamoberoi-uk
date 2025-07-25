@@ -48,77 +48,156 @@ export class SeoAnalyzerService {
   ) {}
 
   async analyzeSeo(url: string): Promise<CachedSeoAnalysis | { status: string; message?: string }> {
-    const cacheKey = `seo_${url}`;
+  const cacheKey = `seo_${url}`;
+  this.logger.debug(`Starting SEO analysis for ${url}`);
+
+  try {
+    const cached = await this.cacheManager.get<CachedSeoAnalysis>(cacheKey);
+    if (cached) {
+      this.logger.debug(`Returning cached SEO analysis for ${url}`);
+      return cached;
+    }
+
+    if (!this.isValidUrl(url)) {
+      throw new Error(`Invalid URL: ${url}`);
+    }
+
+    const session = await this.pageModel.db.startSession();
+    session.startTransaction();
+    this.logger.debug(`Transaction started for ${url}`);
 
     try {
-      // Check cache with proper typing
-      const cached = await this.cacheManager.get<CachedSeoAnalysis>(cacheKey);
-      if (cached) {
-        this.logger.debug(`Returning cached SEO analysis for ${url}`);
-        return cached;
-      }
+      const [page] = await Promise.all([
+        this.pageModel.findOne({ url }).session(session).lean().exec(),
+      ]);
 
-      if (!this.isValidUrl(url)) {
-        throw new Error(`Invalid URL: ${url}`);
-      }
-
-      const session = await this.pageModel.db.startSession();
-      session.startTransaction();
-
-      try {
-        const [page, links, images] = await Promise.all([
-          this.pageModel.findOne({ url }).session(session).lean().exec(),
-          this.linkModel.find({ sourceUrl: url }).session(session).lean().exec(),
-          this.imageModel.find({ sourceUrl: url }).session(session).lean().exec(),
-        ]);
-
-        if (!page) {
-          await session.abortTransaction();
-          return { status: 'not_found', message: `Page not found for URL: ${url}` };
-        }
-
-        const brokenLinks = await this.processLinks(links, session);
-        const { oversizedImages, blurryImages } = this.analyzeImages(images);
-
-        const analysis = await this.analysisModel.create(
-          [
-            {
-              url,
-              brokenLinks: brokenLinks,
-              oversizedImages,
-              blurryImages,
-              analyzedAt: new Date(),
-            },
-          ],
-          { session },
-        );
-
-        await session.commitTransaction();
-
-        const result: CachedSeoAnalysis = {
-          url,
-          brokenLinks,
-          oversizedImages,
-          blurryImages,
-          analyzedAt: analysis[0].analyzedAt,
-        };
-
-        await this.cacheManager.set(cacheKey, result, this.config.cacheTtl);
-        return result;
-      } catch (error) {
+      if (!page) {
         await session.abortTransaction();
-        throw error;
-      } finally {
-        session.endSession();
+        this.logger.warn(`No page data found for ${url}`);
+        return { status: 'not_found', message: `Page not found for URL: ${url}. Please run /crawler/start first.` };
       }
-    } catch (error) {
-      this.logger.error(`SEO analysis failed for ${url}: ${error.message}`);
-      return {
-        status: 'error',
-        message: error.message || 'SEO analysis failed',
+
+      const [links, images] = await Promise.all([
+        this.linkModel.find({ sourceUrl: url }).session(session).lean().exec(),
+        this.imageModel.find({ sourceUrl: url }).session(session).lean().exec(),
+      ]);
+
+      const brokenLinks = await this.processLinks(links, session);
+      const { oversizedImages, blurryImages } = this.analyzeImages(images);
+
+      const analysis = await this.analysisModel.create(
+        [
+          {
+            url,
+            brokenLinks,
+            oversizedImages,
+            blurryImages,
+            analyzedAt: new Date(),
+          },
+        ],
+        { session },
+      );
+
+      await session.commitTransaction();
+      this.logger.debug(`Transaction committed for ${url}`);
+
+      const result: CachedSeoAnalysis = {
+        url,
+        brokenLinks,
+        oversizedImages,
+        blurryImages,
+        analyzedAt: analysis[0].analyzedAt,
       };
+
+      await this.cacheManager.set(cacheKey, result, this.config.cacheTtl);
+      return result;
+    } catch (error) {
+      await session.abortTransaction();
+      this.logger.error(`Transaction aborted for ${url}: ${error.message}`, error.stack);
+      throw error;
+    } finally {
+      session.endSession();
     }
+  } catch (error) {
+    this.logger.error(`SEO analysis failed for ${url}: ${error.message}`, error.stack);
+    return {
+      status: 'error',
+      message: error.message || 'SEO analysis failed',
+    };
   }
+}
+  // async analyzeSeo(url: string): Promise<CachedSeoAnalysis | { status: string; message?: string }> {
+  //   const cacheKey = `seo_${url}`;
+
+  //   try {
+  //     // Check cache with proper typing
+  //     const cached = await this.cacheManager.get<CachedSeoAnalysis>(cacheKey);
+  //     if (cached) {
+  //       this.logger.debug(`Returning cached SEO analysis for ${url}`);
+  //       return cached;
+  //     }
+
+  //     if (!this.isValidUrl(url)) {
+  //       throw new Error(`Invalid URL: ${url}`);
+  //     }
+
+  //     const session = await this.pageModel.db.startSession();
+  //     session.startTransaction();
+
+  //     try {
+  //       const [page, links, images] = await Promise.all([
+  //         this.pageModel.findOne({ url }).session(session).lean().exec(),
+  //         this.linkModel.find({ sourceUrl: url }).session(session).lean().exec(),
+  //         this.imageModel.find({ sourceUrl: url }).session(session).lean().exec(),
+  //       ]);
+
+  //       if (!page) {
+  //         await session.abortTransaction();
+  //         return { status: 'not_found', message: `Page not found for URL: ${url}` };
+  //       }
+
+  //       const brokenLinks = await this.processLinks(links, session);
+  //       const { oversizedImages, blurryImages } = this.analyzeImages(images);
+
+  //       const analysis = await this.analysisModel.create(
+  //         [
+  //           {
+  //             url,
+  //             brokenLinks: brokenLinks,
+  //             oversizedImages,
+  //             blurryImages,
+  //             analyzedAt: new Date(),
+  //           },
+  //         ],
+  //         { session },
+  //       );
+
+  //       await session.commitTransaction();
+
+  //       const result: CachedSeoAnalysis = {
+  //         url,
+  //         brokenLinks,
+  //         oversizedImages,
+  //         blurryImages,
+  //         analyzedAt: analysis[0].analyzedAt,
+  //       };
+
+  //       await this.cacheManager.set(cacheKey, result, this.config.cacheTtl);
+  //       return result;
+  //     } catch (error) {
+  //       await session.abortTransaction();
+  //       throw error;
+  //     } finally {
+  //       session.endSession();
+  //     }
+  //   } catch (error) {
+  //     this.logger.error(`SEO analysis failed for ${url}: ${error.message}`);
+  //     return {
+  //       status: 'error',
+  //       message: error.message || 'SEO analysis failed',
+  //     };
+  //   }
+  // }
 
   private isValidUrl(url: string): boolean {
     try {

@@ -18,7 +18,7 @@ import {
 } from '../dto/seo.dto';
 
 @ApiTags('seo')
-@Controller('seo')
+@Controller('seo-analyzer')
 export class SeoAnalyzerController {
   constructor(
     private readonly seoAnalyzerService: SeoAnalyzerService,
@@ -26,7 +26,7 @@ export class SeoAnalyzerController {
   ) {}
 
   @Get('analyze')
-  @UseGuards(AuthGuard('jwt'))
+  // @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
   async analyzeSeo(@Query(ValidationPipe) analyzeSeoDto: AnalyzeSeoDto) {
     return this.seoAnalyzerService.analyzeSeo(analyzeSeoDto.url);

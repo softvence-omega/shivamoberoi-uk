@@ -25,14 +25,14 @@ export class WebsiteAnalyzerController {
   ) {}
 
   @Get('website')
-  @UseGuards(AuthGuard('jwt'))
+  // @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
   async analyzeWebsite(@Query(ValidationPipe) { url }: { url: string }) {
     return this.websiteAnalyzerService.analyzeWebsite(url);
   }
 
   @Get('keywords')
-  @UseGuards(AuthGuard('jwt'))
+  // @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
   async searchKeywords(@Query(ValidationPipe) { url }: { url: string }) {
     return this.websiteAnalyzerService.searchKeywords(url);
