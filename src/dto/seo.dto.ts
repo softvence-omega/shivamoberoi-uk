@@ -8,9 +8,10 @@ export class AnalyzeSeoDto {
 }
 
 export class GenerateContentDto {
-  @IsUrl({}, { message: "Invalid URL format" })
+  @IsUrl({}, { message: 'Invalid URL format' })
   @IsString()
-  url: string;
+  @IsOptional()
+  url?: string;
 
   // @IsArray()
   // @IsString({each:true})
@@ -29,8 +30,6 @@ export class RefineContentDto {
 
   @IsString()
   content: string;
-
-  
 }
 
 export class AnalyzeContentDto {
