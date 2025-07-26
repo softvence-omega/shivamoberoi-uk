@@ -62,7 +62,7 @@ export class WebsiteAnalyzerController {
   }
 
   @Put('migrate')
-  @UseGuards(AuthGuard('jwt'))
+  // @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
   async runMigrations() {
     await this.migrationService.runMigrations();
