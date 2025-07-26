@@ -11,7 +11,9 @@ import { SeoAnalyzerService } from './seo-analyzer.service';
 import { ContentAiService } from '../ai/content-ai.service';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from '@nestjs/passport';
+import { URL } from 'url';
 import {
+  AnalyzeContentDto,
   AnalyzeSeoDto,
   GenerateContentDto,
   RefineContentDto,
@@ -36,7 +38,7 @@ export class SeoAnalyzerController {
   // @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
   async generateContent(@Body(ValidationPipe) generateContentDto: GenerateContentDto) {
-    return this.contentAiService.generateContent(generateContentDto.prompt);
+    return this.contentAiService.generateContent(generateContentDto.prompt, generateContentDto.url);
   }
   // @Post('generate-content')
   // @UseGuards(AuthGuard('jwt'))
@@ -51,7 +53,7 @@ export class SeoAnalyzerController {
   // }
 
   @Post('refine-content')
-  @UseGuards(AuthGuard('jwt'))
+  // @UseGuards(AuthGuard('jwt'))
   @ApiBearerAuth()
   async refineContent(
     @Body(ValidationPipe) refineContentDto: RefineContentDto,
@@ -61,40 +63,18 @@ export class SeoAnalyzerController {
       refineContentDto.content,
     );
   }
+  @Post('analyze-content')
+  // @UseGuards(AuthGuard('jwt'))
+  @ApiBearerAuth()
+  async analyzeContent(
+    @Body(ValidationPipe) dto: AnalyzeContentDto
+  ) {
+    const analysis = await this.contentAiService.analyzeContent(dto.content);
+    return {
+      state: "true",
+      status: "success",
+      message: "Content analyzed successfully",
+      data: { analysis }
+    };
+  }
 }
-
-// // import { Controller, Get, Query, UseGuards, ApiBearerAuth, ApiTags } from '@nestjs/common';
-
-// // import { AuthGuard } from '@nestjs/passport';
-
-// import { Controller, Get, Query, UseGuards  } from '@nestjs/common';
-// import { ApiBearerAuth,ApiTags } from '@nestjs/swagger';
-// import { SeoAnalyzerService } from './seo-analyzer.service';
-// import { AuthGuard } from '@nestjs/passport';
-// import { CachedSeoAnalysis } from './seo-analyzer.service';
-
-// // @ApiTags('seo')
-// // @Controller('seo')
-// // export class SeoAnalyzerController {
-// //   constructor(private readonly seoAnalyzerService: SeoAnalyzerService) {}
-
-// //   @Get('analyze')
-// //   @UseGuards(AuthGuard('jwt'))
-// //   @ApiBearerAuth()
-// //   async analyzeSeo(@Query('url') url: string): Promise<CachedSeoAnalysis | { status: string; message?: string }> {
-// //     return this.seoAnalyzerService.analyzeSeo(url);
-// //   }
-// // }
-
-// @ApiTags('seo')
-// @Controller('seo')
-// export class SeoAnalyzerController {
-//   constructor(private readonly seoAnalyzerService: SeoAnalyzerService) {}
-
-//   @Get('analyze')
-//   @UseGuards(AuthGuard('jwt'))
-//   @ApiBearerAuth()
-//   async analyzeSeo(@Query('url') url: string) {
-//     return this.seoAnalyzerService.analyzeSeo(url);
-//   }
-// }

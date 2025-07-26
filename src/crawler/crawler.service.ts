@@ -1,4 +1,4 @@
-import { Injectable, Inject, Logger, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Inject, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import { InjectModel } from '@nestjs/mongoose';
@@ -11,7 +11,7 @@ import axios from 'axios';
 import { analyzeImage } from '../utils/image-analyzer';
 
 @Injectable()
-export class CrawlerService implements OnModuleDestroy {
+export class CrawlerService implements OnModuleDestroy, OnModuleInit {
   private readonly logger = new Logger(CrawlerService.name);
   private readonly MAX_CONCURRENT_PAGES = 5;
   private readonly CRAWL_TIMEOUT = 15000;
@@ -50,13 +50,13 @@ export class CrawlerService implements OnModuleDestroy {
     }
   }
 
-  async startCrawling(startUrl: string, continuationToken?: string): Promise<{ status: string; pagesCrawled: number; nextToken?: string | undefined; timestamp: string }> {
+  async startCrawling(startUrl: string, continuationToken?: string): Promise<{ status: string; message: string; data: { pagesCrawled: number; nextToken?: string | undefined; timestamp: string } }> {
     const cacheKey = `crawl:${startUrl}:${continuationToken || Date.now()}`;
     const cached = await this.cacheManager.get(cacheKey);
 
-    if (cached && typeof cached === 'object' && 'status' in cached && 'pagesCrawled' in cached && 'timestamp' in cached) {
+    if (cached && typeof cached === 'object' && 'status' in cached && 'message' in cached && 'data' in cached) {
       this.logger.debug(`Returning cached result for ${startUrl}`);
-      return cached as { status: string; pagesCrawled: number; nextToken?: string | undefined; timestamp: string };
+      return cached as { status: string; message: string; data: { pagesCrawled: number; nextToken?: string | undefined; timestamp: string } };
     }
 
     const visited = new Set<string>(continuationToken ? JSON.parse(continuationToken) : []);
@@ -97,9 +97,12 @@ export class CrawlerService implements OnModuleDestroy {
 
       const result = {
         status: queue.length > 0 ? 'partial' : 'success',
-        pagesCrawled,
-        nextToken: queue.length > 0 ? JSON.stringify(Array.from(visited)) : undefined,
-        timestamp: new Date().toISOString(),
+        message: queue.length > 0 ? 'Crawling completed partially' : 'Crawling completed successfully',
+        data: {
+          pagesCrawled,
+          nextToken: queue.length > 0 ? JSON.stringify(Array.from(visited)) : undefined,
+          timestamp: new Date().toISOString(),
+        },
       };
 
       if (result.status === 'success') {
@@ -271,12 +274,12 @@ export class CrawlerService implements OnModuleDestroy {
     }
   }
 
-  async getIndex(url: string) {
+  async getIndex(url: string): Promise<{ status: string; message: string; data: { page: any; links: any[]; images: any[]; timestamp: string } }> {
     const cacheKey = `index:${url}`;
     const cached = await this.cacheManager.get(cacheKey);
     if (cached) {
       this.logger.debug(`Returning cached index for ${url}`);
-      return cached;
+      return cached as { status: string; message: string; data: { page: any; links: any[]; images: any[]; timestamp: string } };
     }
 
     try {
@@ -287,15 +290,18 @@ export class CrawlerService implements OnModuleDestroy {
       ]);
 
       if (!page) {
-        return { status: 'not_found', message: `Page not found for ${url}` };
+        return { status: 'not_found', message: `Page not found for ${url}`, data: { page: null, links: [], images: [], timestamp: new Date().toISOString() } };
       }
 
       const result = {
         status: 'success',
-        page,
-        links,
-        images,
-        timestamp: new Date().toISOString(),
+        message: 'Index retrieved successfully',
+        data: {
+          page,
+          links,
+          images,
+          timestamp: new Date().toISOString(),
+        },
       };
 
       await this.cacheManager.set(cacheKey, result, this.CACHE_TTL);
