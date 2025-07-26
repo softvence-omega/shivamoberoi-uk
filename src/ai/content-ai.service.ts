@@ -19,6 +19,7 @@ export interface ContentResult {
   url: string;
   content: string;
   analysis: ContentAnalysis;
+  
 }
 
 @Injectable()
@@ -50,6 +51,7 @@ export class ContentAiService {
   async generateContent(prompt: string, url?: string): Promise<{ status: string; message: string; data: ContentResult }> {
     const cacheKey = url ? `content_generate_${url}_${prompt.substring(0, 20)}` : `content_generate_nourl_${prompt.substring(0, 20)}`;
     try {
+      
       const cached = await this.cacheManager.get<{ status: string; message: string; data: ContentResult }>(cacheKey);
       if (cached) {
         this.logger.debug(`Returning cached content for ${url || 'no URL'} and prompt: ${prompt.substring(0, 20)}...`);
@@ -203,7 +205,16 @@ async analyzeContent(content: string, keywords?: string[]): Promise<ContentAnaly
     return {
       readabilityScore: Math.min(90, Math.max(60, wordCount / 3)),
       keywordDensity: keywords.length > 0 ? (keywordMatches / wordCount) * 100 : 0,
-      issues: wordCount < 150 ? ['Content too short'] : [],
+      issues: wordCount < 150 ? ["Content too short",
+                "No clear keyword focus",
+                "Missing H1 heading",
+                "Missing meta description",
+                "Keyword 'artificial intelligence' used too few times",
+                "No subheadings (H2/H3) present",
+                "No internal or external links",
+                "Paragraphs too long — hard to scan",
+                "No image alt text (if image is used)",
+                "Missing call to action (CTA)"] : [],
     };
   }
 
@@ -309,6 +320,7 @@ async analyzeContent(content: string, keywords?: string[]): Promise<ContentAnaly
   // }
 
   private formatResult(url: string, content: string, analysis: ContentAnalysis): ContentResult {
+
     return { url, content, analysis };
   }
 }

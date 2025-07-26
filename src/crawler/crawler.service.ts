@@ -43,6 +43,7 @@ export class CrawlerService implements OnModuleDestroy, OnModuleInit {
           '--disable-dev-shm-usage',
         ],
         timeout: this.CRAWL_TIMEOUT,
+        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined
       });
       for (let i = 0; i < this.MAX_CONCURRENT_PAGES; i++) {
         this.pagePool.push(await this.browser.newPage());
