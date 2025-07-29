@@ -11,10 +11,19 @@ interface SeoAnalysis {
   seoScore: number;
 }
 
-interface KeywordResult {
+interface KeywordResults {
   keywords: string[];
 }
 
+interface KeywordMetrics {
+  intent: string;
+  value: number ;
+  trend: string;
+  kdPercentage: number;
+  result: number;
+  lastUpdate: string;
+
+}
 @Injectable()
 export class WebsiteAnalyzerService {
   private readonly logger = new Logger(WebsiteAnalyzerService.name);
@@ -38,7 +47,7 @@ export class WebsiteAnalyzerService {
     }
   }
 
-  async analyzeWebsite(url: string, skip: number = 0, limit: number = 10): Promise<any> {
+ async analyzeWebsite(url: string, skip: number = 0, limit: number = 10): Promise<any> {
     const cacheKey = `website_${url}_${skip}_${limit}`;
     const cached = await this.cacheManager.get(cacheKey);
     if (cached) return cached;
@@ -59,7 +68,8 @@ export class WebsiteAnalyzerService {
     const analysisResults: SeoAnalysis[] = [];
 
     for (const chunkData of chunks) {
-      const chunkAnalysis: SeoAnalysis = this.calculateSeoScoreForChunk(chunkData, pageDoc.metaTags.length > 0);
+     const chunkAnalysis: SeoAnalysis = this.calculateSeoScoreForChunk(chunkData, pageDoc.metaTags.length > 0, pageDoc.linkedUrls.length, pageDoc);
+      analysisResults.push(chunkAnalysis);
       analysisResults.push(chunkAnalysis);
       await new Promise(resolve => setTimeout(resolve, 100)); // Simulate async delay
     }
@@ -69,16 +79,23 @@ export class WebsiteAnalyzerService {
     const internalLinksCount = pageDoc.linkedUrls.length;
     const metaDescription = pageDoc.metaTags.find(tag => tag.name === 'description')?.content || 'No meta description';
 
+    // Estimate backlinks based on internal links and authority
+    const estimatedBacklinks = this.estimateBacklinks(internalLinksCount, this.estimateAuthority(internalLinksCount));
+    // Estimate paid keywords based on organic keywords and authority
+    const organicKeywordsCount = this.countKeywords(paginatedHeadings);
+    const estimatedPaidKeywords = this.estimatePaidKeywords(organicKeywordsCount, this.estimateAuthority(internalLinksCount));
+
     const result = {
       status: 'success',
       message: 'Analysis completed successfully',
-      url,
+      data: {
+        url,
       seoScore,
       authorityScore: this.estimateAuthority(internalLinksCount),
       organicTraffic: this.estimateTraffic(internalLinksCount),
-      organicKeywords: this.countKeywords(paginatedHeadings),
-      paidKeywords: 0,
-      backlinks: 0,
+      organicKeywords: organicKeywordsCount,
+      paidKeywords: estimatedPaidKeywords,
+      backlinks: estimatedBacklinks,
       siteHealth,
       analysisDate: new Date().toISOString().split('T')[0],
       metaDescription,
@@ -86,6 +103,7 @@ export class WebsiteAnalyzerService {
       page: Math.floor(skip / limit) + 1,
       limit,
       totalPages: Math.ceil(totalHeadings / limit),
+      }
     };
 
     await this.cacheManager.set(cacheKey, result, 3600);
@@ -93,7 +111,7 @@ export class WebsiteAnalyzerService {
   }
 
   async searchKeywords(url: string, skip: number = 0, limit: number = 10): Promise<any> {
-    const cacheKey = `keywords_${url}_${skip}_${limit}`;
+const cacheKey = `keywords_${url}_${skip}_${limit}`;
     const cached = await this.cacheManager.get(cacheKey);
     if (cached) return cached;
 
@@ -115,14 +133,26 @@ export class WebsiteAnalyzerService {
     const totalKeywords = allKeywords.length;
     const paginatedKeywords = allKeywords.slice(skip, skip + limit);
 
-    // Process keywords in chunks
-    const chunks = chunk(paginatedKeywords, this.chunkSize);
-    const keywordResults: KeywordResult[] = [];
+    // // Process keywords in chunks
+    // const chunks = chunk(paginatedKeywords, this.chunkSize);
+    // const keywordResults: KeywordResult[] = [];
 
-    for (const chunkData of chunks) {
-      keywordResults.push({ keywords: chunkData });
-      await new Promise(resolve => setTimeout(resolve, 100)); // Simulate async delay
-    }
+    // for (const chunkData of chunks) {
+    //   keywordResults.push({ keywords: chunkData });
+    //   await new Promise(resolve => setTimeout(resolve, 100)); // Simulate async delay
+    // }
+
+const keywordResults: KeywordMetrics[] = paginatedKeywords.map(keyword => {
+      const frequency = (allText.match(new RegExp(`\\b${keyword}\\b`, 'g')) || []).length;
+      const intent = this.determineIntent(keyword, pageDoc);
+      const value = this.calculateKeywordValue(frequency, totalKeywords);
+      const trend = this.estimateTrend(frequency, pageDoc.crawledAt);
+      const kdPercentage = this.calculateKDPercentage(totalKeywords, pageDoc.linkedUrls.length);
+      const result = this.estimateSearchResults(totalKeywords, pageDoc.content.length);
+      const lastUpdate = pageDoc.crawledAt ? pageDoc.crawledAt.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+
+      return { intent, value, trend, kdPercentage, result, lastUpdate };
+    });
 
     const result = {
       status: 'success',
@@ -130,7 +160,7 @@ export class WebsiteAnalyzerService {
       data: {
         url,
         totalKeywords,
-        keywords: keywordResults.flatMap(r => r.keywords),
+        keywords: keywordResults,
         page: Math.floor(skip / limit) + 1,
         limit,
         totalPages: Math.ceil(totalKeywords / limit),
@@ -173,11 +203,25 @@ export class WebsiteAnalyzerService {
     }
   }
 
-  private calculateSeoScoreForChunk(chunk: string[], hasMetaTags: boolean): SeoAnalysis {
-    const headingScore = chunk.length > 0 ? 50 : 0;
-    return { seoScore: Math.round((hasMetaTags ? 50 : 0) + headingScore) };
-  }
+  
 
+
+
+private calculateSeoScoreForChunk(chunk: string[], hasMetaTags: boolean, internalLinksCount: number, pageDoc: PageDocument): SeoAnalysis {
+    const headingScore = chunk.length > 0 ? 50 : 0; // Base score for headings
+    const metaScore = hasMetaTags ? 30 : 0; // Score for meta tags
+    const keywordDensityScore = this.calculateKeywordDensity(pageDoc) > 0.02 ? 20 : 0; // 2% keyword density threshold
+    const backlinkImpact = Math.min(20, Math.round((internalLinksCount / 10) * 2)); // Estimated backlink influence
+    return { seoScore: Math.round(headingScore + metaScore + keywordDensityScore + backlinkImpact) };
+  }
+  private calculateKeywordDensity(pageDoc: PageDocument): number {
+    if (!pageDoc.headings.length) return 0;
+    const text = [...pageDoc.headings, ...pageDoc.metaTags.map(tag => tag.content).filter(c => c)].join(' ').toLowerCase();
+    const keywords = this.extractKeywords(pageDoc);
+    const totalWords = text.split(/\s+/).length;
+    const keywordCount = keywords.reduce((sum, kw) => sum + (text.match(new RegExp(`\\b${kw}\\b`, 'g')) || []).length, 0);
+    return totalWords > 0 ? keywordCount / totalWords : 0;
+  }
   private calculateSiteHealth(loadTime: number, imageCount: number): number {
     const loadScore = loadTime < 2000 ? 100 : Math.max(0, 100 - ((loadTime - 2000) / 20));
     const imageScore = imageCount < 10 ? 100 : Math.max(0, 100 - (imageCount - 10) * 5);
@@ -209,7 +253,54 @@ export class WebsiteAnalyzerService {
   async onModuleDestroy() {
     if (this.browser) await this.browser.close();
   }
+
+  private estimateBacklinks(internalLinksCount: number, authorityScore: number): number {
+    // Simple heuristic: Backlinks correlate with internal links and authority
+    // Assume 10 backlinks per internal link up to a cap, scaled by authority
+    const baseBacklinks = Math.min(1000, internalLinksCount * 10);
+    const authorityFactor = Math.min(1, authorityScore / 100);
+    return Math.round(baseBacklinks * authorityFactor);
+  }
+
+  private estimatePaidKeywords(organicKeywordsCount: number, authorityScore: number): number {
+    // Assume 5-10% of organic keywords might be part of paid campaigns, scaled by authority
+    const basePaidKeywords = Math.round(organicKeywordsCount * 0.05); // 5% as baseline
+    const authorityFactor = Math.min(1, authorityScore / 100);
+    return Math.round(basePaidKeywords * authorityFactor);
+  }
+
+  private determineIntent(keyword: string, pageDoc: PageDocument): string {
+    const lowerKeyword = keyword.toLowerCase();
+    if (['check', 'status'].includes(lowerKeyword)) return 'informational';
+    if (['online', 'buy'].includes(lowerKeyword)) return 'transactional';
+    if (['smart', 'card'].includes(lowerKeyword)) return 'commercial';
+    return 'informational';
+
+  }
+
+  private calculateKeywordValue(frequency: number, totalKeywords: number): number {
+    return Math.round((frequency/ totalKeywords) * 100);
+  }
+
+  private estimateTrend(frequency: number, crawledAt: Date): string {
+    const monthsSinceCrawl = (new Date().getTime()-crawledAt.getTime()) / (1000*60*60*24*30);
+    return frequency > 1 && monthsSinceCrawl <6 ? 'upward' : 'stable';
+  }
+
+
+private calculateKDPercentage(totalKeywords: number, internalLinksCount: number): number {
+    const baseDifficulty = Math.min(100, (totalKeywords / 10) * 5);
+    const linkImpact = Math.min(50, internalLinksCount * 2);
+    return Math.round((baseDifficulty + linkImpact) / 1.5);
+  }
+  private estimateSearchResults(totalKeywords: number, contentLength: number): number {
+    const baseResults = totalKeywords * 1000;
+    const contentFactor = Math.log(contentLength / 1000 + 1) * 1000;
+    return Math.round(baseResults + contentFactor);
+  }
 }
+
+
 
 // import { CACHE_MANAGER } from '@nestjs/cache-manager';
 // import { Injectable, Inject } from '@nestjs/common';
@@ -333,3 +424,4 @@ export class WebsiteAnalyzerService {
 //       .map(entry => entry[0]);
 //   }
 // }
+

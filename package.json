@@ -12,7 +12,7 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node --max-old-space-size=1024 dist/main",
-    "postinstall": "node node_modules/puppeteer/install.js",
+    "install:chrome": "echo \"Skipping Chrome install in Render\"",
     "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
     "migrate": "ts-node -r tsconfig-paths/register src/migration.service.ts run",
     "rollback": "ts-node -r tsconfig-paths/register src/migration.service.ts rollback",

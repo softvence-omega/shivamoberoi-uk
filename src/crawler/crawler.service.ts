@@ -1,4 +1,10 @@
-import { Injectable, Inject, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  Logger,
+  OnModuleDestroy,
+  OnModuleInit,
+} from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import { InjectModel } from '@nestjs/mongoose';
@@ -43,7 +49,9 @@ export class CrawlerService implements OnModuleDestroy, OnModuleInit {
           '--disable-dev-shm-usage',
         ],
         timeout: this.CRAWL_TIMEOUT,
-        executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined
+        executablePath: process.env.RENDER
+          ? '/usr/bin/chromium-browser'
+          : undefined,
       });
       for (let i = 0; i < this.MAX_CONCURRENT_PAGES; i++) {
         this.pagePool.push(await this.browser.newPage());
@@ -51,16 +59,43 @@ export class CrawlerService implements OnModuleDestroy, OnModuleInit {
     }
   }
 
-  async startCrawling(startUrl: string, continuationToken?: string): Promise<{ status: string; message: string; data: { pagesCrawled: number; nextToken?: string | undefined; timestamp: string } }> {
+  async startCrawling(
+    startUrl: string,
+    continuationToken?: string,
+  ): Promise<{
+    status: string;
+    message: string;
+    data: {
+      pagesCrawled: number;
+      nextToken?: string | undefined;
+      timestamp: string;
+    };
+  }> {
     const cacheKey = `crawl:${startUrl}:${continuationToken || Date.now()}`;
     const cached = await this.cacheManager.get(cacheKey);
 
-    if (cached && typeof cached === 'object' && 'status' in cached && 'message' in cached && 'data' in cached) {
+    if (
+      cached &&
+      typeof cached === 'object' &&
+      'status' in cached &&
+      'message' in cached &&
+      'data' in cached
+    ) {
       this.logger.debug(`Returning cached result for ${startUrl}`);
-      return cached as { status: string; message: string; data: { pagesCrawled: number; nextToken?: string | undefined; timestamp: string } };
+      return cached as {
+        status: string;
+        message: string;
+        data: {
+          pagesCrawled: number;
+          nextToken?: string | undefined;
+          timestamp: string;
+        };
+      };
     }
 
-    const visited = new Set<string>(continuationToken ? JSON.parse(continuationToken) : []);
+    const visited = new Set<string>(
+      continuationToken ? JSON.parse(continuationToken) : [],
+    );
     const queue: string[] = continuationToken ? [] : [startUrl];
     const activePages: Promise<void>[] = [];
     let pagesCrawled = 0;
@@ -69,7 +104,12 @@ export class CrawlerService implements OnModuleDestroy, OnModuleInit {
       let depth = 0;
       const startTime = Date.now();
 
-      while (queue.length > 0 && pagesCrawled < this.MAX_PAGES_PER_REQUEST && depth <= this.MAX_CRAWL_DEPTH && Date.now() - startTime < this.CRAWL_TIMEOUT * 2) {
+      while (
+        queue.length > 0 &&
+        pagesCrawled < this.MAX_PAGES_PER_REQUEST &&
+        depth <= this.MAX_CRAWL_DEPTH &&
+        Date.now() - startTime < this.CRAWL_TIMEOUT * 2
+      ) {
         while (
           activePages.length < this.MAX_CONCURRENT_PAGES &&
           queue.length > 0 &&
@@ -78,8 +118,11 @@ export class CrawlerService implements OnModuleDestroy, OnModuleInit {
           const url = queue.shift()!;
           if (!visited.has(url)) {
             visited.add(url);
-            const page = this.pagePool[activePages.length % this.MAX_CONCURRENT_PAGES];
-            activePages.push(this.processPage(page, url, queue, visited, depth));
+            const page =
+              this.pagePool[activePages.length % this.MAX_CONCURRENT_PAGES];
+            activePages.push(
+              this.processPage(page, url, queue, visited, depth),
+            );
             pagesCrawled++;
           }
         }
@@ -98,10 +141,14 @@ export class CrawlerService implements OnModuleDestroy, OnModuleInit {
 
       const result = {
         status: queue.length > 0 ? 'partial' : 'success',
-        message: queue.length > 0 ? 'Crawling completed partially' : 'Crawling completed successfully',
+        message:
+          queue.length > 0
+            ? 'Crawling completed partially'
+            : 'Crawling completed successfully',
         data: {
           pagesCrawled,
-          nextToken: queue.length > 0 ? JSON.stringify(Array.from(visited)) : undefined,
+          nextToken:
+            queue.length > 0 ? JSON.stringify(Array.from(visited)) : undefined,
           timestamp: new Date().toISOString(),
         },
       };
@@ -138,12 +185,14 @@ export class CrawlerService implements OnModuleDestroy, OnModuleInit {
       });
 
       this.logger.debug(`Processing page: ${url} at depth ${depth}`);
-      await page.goto(url, {
-        waitUntil: 'domcontentloaded',
-        timeout: this.CRAWL_TIMEOUT,
-      }).catch((err) => {
-        throw new Error(`Navigation failed: ${err.message}`);
-      });
+      await page
+        .goto(url, {
+          waitUntil: 'domcontentloaded',
+          timeout: this.CRAWL_TIMEOUT,
+        })
+        .catch((err) => {
+          throw new Error(`Navigation failed: ${err.message}`);
+        });
 
       const [content, links, images] = await Promise.all([
         page.content(),
@@ -151,10 +200,10 @@ export class CrawlerService implements OnModuleDestroy, OnModuleInit {
           as
             .map((a) => a.href)
             .filter((href) => href.startsWith('http'))
-            .map((href) => new URL(href).href)
+            .map((href) => new URL(href).href),
         ),
         page.$$eval('img', (imgs) =>
-          imgs.map((img) => img.src).filter((src) => src.startsWith('http'))
+          imgs.map((img) => img.src).filter((src) => src.startsWith('http')),
         ),
       ]);
 
@@ -223,7 +272,9 @@ export class CrawlerService implements OnModuleDestroy, OnModuleInit {
       }
       if (depth < this.MAX_CRAWL_DEPTH) {
         links
-          .filter((link) => !visited.has(link) && queue.length < this.MAX_QUEUE_SIZE)
+          .filter(
+            (link) => !visited.has(link) && queue.length < this.MAX_QUEUE_SIZE,
+          )
           .forEach((link) => queue.push(link));
       }
     } catch (err) {
@@ -236,7 +287,23 @@ export class CrawlerService implements OnModuleDestroy, OnModuleInit {
     images: string[],
   ): Promise<void> {
     const MAX_CONCURRENT_IMAGES = 5;
-    const imageUpdates: { updateOne: { filter: { url: string; sourceUrl: string }; update: { $set: { analyzedAt: Date; updatedAt: Date; fileSize: number; width: number; height: number; isBlurry: boolean; name?: string } }; upsert: boolean } }[] = [];
+    const imageUpdates: {
+      updateOne: {
+        filter: { url: string; sourceUrl: string };
+        update: {
+          $set: {
+            analyzedAt: Date;
+            updatedAt: Date;
+            fileSize: number;
+            width: number;
+            height: number;
+            isBlurry: boolean;
+            name?: string;
+          };
+        };
+        upsert: boolean;
+      };
+    }[] = [];
 
     for (let i = 0; i < images.length; i += MAX_CONCURRENT_IMAGES) {
       const batch = images.slice(i, i + MAX_CONCURRENT_IMAGES);
@@ -263,7 +330,11 @@ export class CrawlerService implements OnModuleDestroy, OnModuleInit {
           return null;
         }
       });
-      imageUpdates.push(...(await Promise.all(promises)).filter((update): update is NonNullable<typeof update> => update !== null));
+      imageUpdates.push(
+        ...(await Promise.all(promises)).filter(
+          (update): update is NonNullable<typeof update> => update !== null,
+        ),
+      );
     }
 
     try {
@@ -275,12 +346,22 @@ export class CrawlerService implements OnModuleDestroy, OnModuleInit {
     }
   }
 
-  async getIndex(url: string): Promise<{ status: string; message: string; data: { page: any; links: any[]; images: any[]; timestamp: string } }> {
+  async getIndex(
+    url: string,
+  ): Promise<{
+    status: string;
+    message: string;
+    data: { page: any; links: any[]; images: any[]; timestamp: string };
+  }> {
     const cacheKey = `index:${url}`;
     const cached = await this.cacheManager.get(cacheKey);
     if (cached) {
       this.logger.debug(`Returning cached index for ${url}`);
-      return cached as { status: string; message: string; data: { page: any; links: any[]; images: any[]; timestamp: string } };
+      return cached as {
+        status: string;
+        message: string;
+        data: { page: any; links: any[]; images: any[]; timestamp: string };
+      };
     }
 
     try {
@@ -291,7 +372,16 @@ export class CrawlerService implements OnModuleDestroy, OnModuleInit {
       ]);
 
       if (!page) {
-        return { status: 'not_found', message: `Page not found for ${url}`, data: { page: null, links: [], images: [], timestamp: new Date().toISOString() } };
+        return {
+          status: 'not_found',
+          message: `Page not found for ${url}`,
+          data: {
+            page: null,
+            links: [],
+            images: [],
+            timestamp: new Date().toISOString(),
+          },
+        };
       }
 
       const result = {
@@ -315,8 +405,16 @@ export class CrawlerService implements OnModuleDestroy, OnModuleInit {
 
   async onModuleDestroy() {
     if (this.browser) {
-      await Promise.all(this.pagePool.map(page => page.close().catch(err => this.logger.error(`Failed to close page: ${err}`))));
-      await this.browser.close().catch(err => this.logger.error(`Failed to close browser: ${err}`));
+      await Promise.all(
+        this.pagePool.map((page) =>
+          page
+            .close()
+            .catch((err) => this.logger.error(`Failed to close page: ${err}`)),
+        ),
+      );
+      await this.browser
+        .close()
+        .catch((err) => this.logger.error(`Failed to close browser: ${err}`));
     }
   }
 }
