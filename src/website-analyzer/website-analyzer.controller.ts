@@ -6,13 +6,21 @@ import {
   Body,
   Put,
   UseGuards,
+  Request,
   ValidationPipe,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { WebsiteAnalyzerService } from './website-analyzer.service';
 import { AuthGuard } from '@nestjs/passport';
 import { AuthService } from '../auth/auth.service';
 import { MigrationService } from '../migration.service';
-import { RegisterDto, LoginDto } from '../dto/auth.dto';
+import {
+  RegisterDto,
+  LoginDto,
+  ChangePasswordDto,
+  ForgetPasswordDto,
+  VerifyForgetPasswordDto,
+} from '../dto/auth.dto';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
 @ApiTags('analyze')
@@ -53,12 +61,57 @@ export class WebsiteAnalyzerController {
     return this.authService.register(
       registerDto.username,
       registerDto.password,
+      registerDto.email,
     );
   }
 
   @Post('login')
   async login(@Body(ValidationPipe) loginDto: LoginDto) {
     return this.authService.login(loginDto.username, loginDto.password);
+  }
+
+@Post('change-password')
+// @UseGuards(AuthGuard('jwt'))
+// @ApiBearerAuth()
+async changePassword(
+  @Request() req,
+  @Body(new ValidationPipe({ transform: true }))
+  changePasswordDto: ChangePasswordDto,
+) {
+  console.log('Full request object:', req);
+  console.log('req.user:', req.user);
+  if (!req.user?.sub) {
+    console.log('Authentication failed, checking headers:', req.headers.authorization);
+    throw new UnauthorizedException(
+      'Authentication failed: user.sub is undefined',
+    );
+  }
+  console.log('User ID from token:', req.user.sub);
+  const result = await this.authService.changePassword(
+    req.user.sub,
+    changePasswordDto.currentPassword,
+    changePasswordDto.newPassword,
+  );
+  console.log('Change password result:', result);
+  return result;
+}
+
+  @Post('forget-password')
+  async forgetPassword(
+    @Body(ValidationPipe) forgetPasswordDto: ForgetPasswordDto,
+  ) {
+    return this.authService.forgetPassword(forgetPasswordDto.email);
+  }
+
+  @Post('verify-forget-password')
+  async verifyForgetPassword(
+    @Body(ValidationPipe) verifyForgetPasswordDto: VerifyForgetPasswordDto,
+  ) {
+    return this.authService.verifyForgetPassword(
+      verifyForgetPasswordDto.email,
+      verifyForgetPasswordDto.code,
+      verifyForgetPasswordDto.newPassword,
+    );
   }
 
   @Put('migrate')

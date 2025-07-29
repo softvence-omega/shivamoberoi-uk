@@ -2,9 +2,13 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model } from 'mongoose';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger,Inject } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { User, UserDocument } from '../schemas/user.schema';
+import * as nodemailer from 'nodemailer';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
+import { error } from 'console';
 
 export interface AuthResponse {
   state: boolean;
@@ -24,6 +28,7 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {
     this.JWT_EXPIRES_IN = this.configService.get<string>('JWT_EXPIRES_IN', '1h');
     this.JWT_SECRET = this.configService.get<string>('JWT_SECRET', 'defaultSecret');
@@ -32,6 +37,7 @@ export class AuthService {
   async register(
     username: string,
     password: string,
+    email: string,
   ): Promise<AuthResponse> {
     try {
       const cleanedUsername = username.trim();
@@ -50,6 +56,7 @@ export class AuthService {
       const user = await this.userModel.create({
         username: cleanedUsername,
         password: hashedPassword,
+        email: email.trim(),
       });
 
       const { password: _, ...userWithoutPassword } = user.toObject();
@@ -111,6 +118,74 @@ export class AuthService {
     }
   }
 
+
+  async changePassword(userId: string, currentPassword: string, newPassword: string): Promise<AuthResponse> {
+   try {
+      const user = await this.userModel.findById(userId).select('+password').lean();
+      if (!user) {
+        return { state: false, message: 'User not found' };
+      }
+
+      if (!await bcrypt.compare(currentPassword, user.password)) {
+        return { state: false, message: 'Current password is incorrect' };
+      }
+
+      const hashedNewPassword = await bcrypt.hash(newPassword, this.SALT_ROUNDS);
+      await this.userModel.findByIdAndUpdate(userId, { password: hashedNewPassword });
+
+      return {
+        state: true,
+        message: 'Password changed successfully',
+      };
+    } catch (error) {
+      this.logger.error(`Password change failed for user ID ${userId}`, error.stack);
+      return { state: false, message: 'Password change failed due to server issues' };
+    }
+  }
+  async forgetPassword(email: string): Promise<AuthResponse> {
+    try {
+      const user = await this.userModel.findOne({ email }).lean();
+      if (!user) {
+        return { state: false, message: 'Email not found' };
+      }
+
+      const verificationCode = this.generateVerificationCode();
+      await this.cacheManager.set(`forget_${email}`, verificationCode, 3600); // Cache for 1 hour
+
+      await this.sendVerificationEmail(email, verificationCode);
+
+      return {
+        state: true,
+        message: 'Verification code sent to your email',
+      };
+    } catch (error) {
+      this.logger.error(`Forget password failed for email ${email}`, error.stack);
+      return { state: false, message: 'Failed to send verification code' };
+    }
+  }
+
+  async verifyForgetPassword(email: string, code: string, newPassword: string): Promise<AuthResponse> {
+    try {
+      const cachedCode  = await this.cacheManager.get(`forget_${email}`);
+      if(!cachedCode || cachedCode!== code) {
+        return {state: false, message: 'Invalid or expired verification code'};
+      }
+      const hashedNewPassword= await bcrypt.hash(newPassword, this.SALT_ROUNDS);
+      await this.userModel.findOneAndUpdate({email}, {password: hashedNewPassword});
+      await this.cacheManager.del(`forget_${email}`);
+      return {
+        state: true,
+        message: 'Password reset successfully',
+      }
+
+    } catch(err) {
+      this.logger.error(`Verify forget password failed for email_${email}`, err);
+      return { state: false, message: " Password reset failed due to server issues"}
+
+    }
+  }
+
+
   private generateToken(user: UserDocument | { _id: string }): { accessToken: string } {
     const payload = {
       sub: user._id.toString(),
@@ -138,7 +213,108 @@ export class AuthService {
       };
     }
   }
+
+  private generateVerificationCode(): string {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  }
+
+  private async sendVerificationEmail(email: string, code: string): Promise<void> {
+    const transporter = nodemailer.createTransport({
+      host: this.configService.get<string>('MAIL_HOST'),
+      port: parseInt(this.configService.get<string>('MAIL_PORT', '587'),10),
+      secure:false,
+      auth: {
+        user: this.configService.get<string>('MAIL_USER'),
+        pass: this.configService.get<string>('MAIL_PASS'),
+      },
+    });
+    const mailOptions = {
+      from: this.configService.get<string>('MAIL_USER'),
+      to: email,
+      subject: 'Password Reset Verification Code',
+      html: `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>Password Reset Verification</title>
+          <style>
+            body {
+              font-family: Arial, sans-serif;
+              background-color: #ffffff;
+              margin: 0;
+              padding: 0;
+            }
+            .container {
+              width: 100%;
+              max-width: 600px;
+              margin: 0 auto;
+              background-color: #f0f0f0;
+              border: 1px solid #e0e0e0;
+              border-radius: 5px;
+            }
+            .header {
+              background-color: #003087;
+              color: #ffffff;
+              text-align: center;
+              padding: 20px;
+            }
+            .header img {
+              max-width: 150px;
+            }
+            .content {
+              padding: 20px;
+              color: #333333;
+            }
+            .code {
+              font-size: 24px;
+              font-weight: bold;
+              color: #003087;
+              text-align: center;
+              margin: 20px 0;
+            }
+            .footer {
+              text-align: center;
+              padding: 10px;
+              font-size: 12px;
+              color: #777777;
+              background-color: #f0f0f0;
+            }
+            a {
+              color: #003087;
+              text-decoration: none;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <div class="header">
+              <img src="https://nidbd.org/logo.png" alt="NIDBD Logo" style="display: block; margin: 0 auto;">
+              <h1>Password Reset Verification</h1>
+            </div>
+            <div class="content">
+              <p>Dear User,</p>
+              <p>We received a request to reset your password. Please use the verification code below to proceed:</p>
+              <div class="code">${code}</div>
+              <p>This code is valid for 1 hour. If you did not request a password reset, please ignore this email or contact support at <a href="mailto:support@nidbd.org">support@nidbd.org</a>.</p>
+            </div>
+            <div class="footer">
+              <p>&copy; 2025 National Identity Database. All rights reserved.</p>
+            </div>
+          </div>
+        </body>
+        </html>
+      `,
+    };
+    await transporter.sendMail(mailOptions);
+  }
+
+ 
 }
+
+
+
 // import { ConfigService } from '@nestjs/config';
 // import { JwtService } from '@nestjs/jwt';
 // import { InjectModel } from '@nestjs/mongoose';

@@ -9,15 +9,19 @@ import { User, UserSchema } from '../schemas/user.schema';
 import { JwtStrategy } from './jwt.strategy'
 import { AuthService } from "./auth.service";
 import * as bcrypt from "bcrypt";
+import { WebsiteAnalyzerModule } from '../website-analyzer/website-analyzer.module';
 
 @Module({
   imports: [
     ConfigModule,
     PassportModule,
+    WebsiteAnalyzerModule,
+    AuthModule,
+   
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET'),
+        secret: configService.get<string>('JWT_SECRET') || 'defaultSecret',
         signOptions: { expiresIn: '60m' },
       }),
       inject: [ConfigService],

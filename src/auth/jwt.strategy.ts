@@ -16,6 +16,7 @@ interface JwtPayload {
 export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   private readonly logger = new Logger(JwtStrategy.name);
   private static readonly ALGORITHM = 'HS256';
+
   constructor(configService: ConfigService) {
     super({
       jwtFromRequest: ExtractJwt.fromExtractors([
@@ -34,15 +35,16 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
   async validate(
     req: Request,
     payload: JwtPayload,
-  ): Promise<{ userId: string }> {
+  ): Promise<{ sub: string }> {
+    console.log('JWT Payload in validate:', payload);
     try {
       if (!payload?.sub || typeof payload.sub !== 'string') {
         this.logger.warn(`Malformed JWT payload: ${JSON.stringify(payload)}`);
         throw new UnauthorizedException('Invalid token structure');
       }
-      return { userId: payload.sub };
+      return { sub: payload.sub }; // Return sub to match controller expectation
     } catch (err) {
-      this.logger.error(`Validation is not match`, {
+      this.logger.error(`Validation failed`, {
         err: err.message,
         stack: err.stack,
         clientIp: req.ip,

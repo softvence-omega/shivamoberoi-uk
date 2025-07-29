@@ -72,6 +72,7 @@ async function bootstrap() {
         'X-Requested-With',
         'X-Api-Version',
       ],
+      credentials: true,
       maxAge: 86400,
     });
     if (environment !== 'production') {
