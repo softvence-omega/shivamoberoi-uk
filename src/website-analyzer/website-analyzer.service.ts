@@ -151,7 +151,7 @@ const keywordResults: KeywordMetrics[] = paginatedKeywords.map(keyword => {
       const result = this.estimateSearchResults(totalKeywords, pageDoc.content.length);
       const lastUpdate = pageDoc.crawledAt ? pageDoc.crawledAt.toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
 
-      return { intent, value, trend, kdPercentage, result, lastUpdate };
+      return {keyword: keyword, intent, value, trend, kdPercentage, result, lastUpdate };
     });
 
     const result = {
