@@ -64,11 +64,17 @@ export class VerifyForgetPasswordDto {
   @IsNotEmpty()
   //   @Matches(/^\d{6}$/, { message: 'Code must be a 6-digit number' })
   code: string;
+}
+
+
+export class SetNewPasswordDto {
+  @IsString()
+  @IsNotEmpty()
+  @IsEmail()
+  email: string;
 
   @IsString()
   @IsNotEmpty()
-  //   @Matches(/^(?=.*[A-Za-z])(?=.*\d)(?=.*[@$!%*#?&])[A-Za-z\d@$!%*#?&]{8,}$/, {
-  //     message: 'New password must be at least 8 characters long with letters, numbers, and special characters',
-  //   })
+  @MinLength(6, { message: 'New password must be at least 6 characters long' })
   newPassword: string;
 }

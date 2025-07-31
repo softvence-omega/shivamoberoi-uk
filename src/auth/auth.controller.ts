@@ -2,7 +2,7 @@ import { Controller, Post, Body, Request, Put, UnauthorizedException, UsePipes, 
 import { AuthService, AuthResponse } from './auth.service';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { MigrationService } from 'src/migration.service';
-import { ChangePasswordDto, ForgetPasswordDto, LoginDto, RegisterDto, VerifyForgetPasswordDto } from 'src/dto/auth.dto';
+import { ChangePasswordDto, ForgetPasswordDto, LoginDto, RegisterDto, SetNewPasswordDto, VerifyForgetPasswordDto } from 'src/dto/auth.dto';
 // import { RegisterDto } from './dto/register.dto';
 // import { LoginDto } from './dto/login.dto';
 // import { ChangePasswordDto } from './dto/change-password.dto';
@@ -16,7 +16,7 @@ export class AuthController {
   constructor(
     private readonly authService: AuthService,
     private readonly migrationService: MigrationService,
-  ) {}
+  ) { }
 
   @Post('register')
   @UsePipes(new ValidationPipe({ transform: true }))
@@ -61,10 +61,20 @@ export class AuthController {
   async verifyForgetPassword(@Body() verifyForgetPasswordDto: VerifyForgetPasswordDto): Promise<AuthResponse> {
     return this.authService.verifyForgetPassword(
       verifyForgetPasswordDto.email,
-      verifyForgetPasswordDto.code,
-      verifyForgetPasswordDto.newPassword,
+      verifyForgetPasswordDto.code
     );
   }
+
+
+  @Post('set-new-password')
+  @UsePipes(new ValidationPipe({ transform: true }))
+  async setNewPassword(@Body() setNewPasswordDto: SetNewPasswordDto): Promise<AuthResponse> {
+    return this.authService.setNewPassword(
+      setNewPasswordDto.email,
+      setNewPasswordDto.newPassword
+    );
+  }
+  
 
   @Put('migrate')
   @ApiBearerAuth()

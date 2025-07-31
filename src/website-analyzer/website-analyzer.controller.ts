@@ -20,6 +20,7 @@ import {
   ChangePasswordDto,
   ForgetPasswordDto,
   VerifyForgetPasswordDto,
+  SetNewPasswordDto,
 } from '../dto/auth.dto';
 import { ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 
@@ -30,7 +31,7 @@ export class WebsiteAnalyzerController {
     private readonly websiteAnalyzerService: WebsiteAnalyzerService,
     private authService: AuthService,
     private migrationService: MigrationService,
-  ) {}
+  ) { }
 
   @Get('website')
   // @UseGuards(AuthGuard('jwt'))
@@ -70,31 +71,31 @@ export class WebsiteAnalyzerController {
     return this.authService.login(loginDto.username, loginDto.password);
   }
 
-@Post('change-password')
-// @UseGuards(AuthGuard('jwt'))
-// @ApiBearerAuth()
-async changePassword(
-  @Request() req,
-  @Body(new ValidationPipe({ transform: true }))
-  changePasswordDto: ChangePasswordDto,
-) {
-  console.log('Full request object:', req);
-  console.log('req.user:', req.user);
-  if (!req.user?.sub) {
-    console.log('Authentication failed, checking headers:', req.headers.authorization);
-    throw new UnauthorizedException(
-      'Authentication failed: user.sub is undefined',
+  @Post('change-password')
+  // @UseGuards(AuthGuard('jwt'))
+  // @ApiBearerAuth()
+  async changePassword(
+    @Request() req,
+    @Body(new ValidationPipe({ transform: true }))
+    changePasswordDto: ChangePasswordDto,
+  ) {
+    console.log('Full request object:', req);
+    console.log('req.user:', req.user);
+    if (!req.user?.sub) {
+      console.log('Authentication failed, checking headers:', req.headers.authorization);
+      throw new UnauthorizedException(
+        'Authentication failed: user.sub is undefined',
+      );
+    }
+    console.log('User ID from token:', req.user.sub);
+    const result = await this.authService.changePassword(
+      req.user.sub,
+      changePasswordDto.currentPassword,
+      changePasswordDto.newPassword,
     );
+    console.log('Change password result:', result);
+    return result;
   }
-  console.log('User ID from token:', req.user.sub);
-  const result = await this.authService.changePassword(
-    req.user.sub,
-    changePasswordDto.currentPassword,
-    changePasswordDto.newPassword,
-  );
-  console.log('Change password result:', result);
-  return result;
-}
 
   @Post('forget-password')
   async forgetPassword(
@@ -109,8 +110,17 @@ async changePassword(
   ) {
     return this.authService.verifyForgetPassword(
       verifyForgetPasswordDto.email,
-      verifyForgetPasswordDto.code,
-      verifyForgetPasswordDto.newPassword,
+      verifyForgetPasswordDto.code
+    );
+  }
+
+  @Post('set-new-password')
+  async setNewPassword(
+    @Body(ValidationPipe) setNewPasswordDto: SetNewPasswordDto,
+  ) {
+    return this.authService.setNewPassword(
+      setNewPasswordDto.email,
+      setNewPasswordDto.newPassword
     );
   }
 

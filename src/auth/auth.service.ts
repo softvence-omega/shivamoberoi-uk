@@ -150,9 +150,8 @@ export class AuthService {
         return { state: false, message: 'Email not found' };
       }
 
-      const verificationCode = this.generateVerificationCode();
-      console.log('Generated verification code:', verificationCode);
-      await this.cacheManager.set(`forget_${normalizedEmail}`, verificationCode, 3600 * 1000);
+      const verificationCode = this.generateVerificationCode(); 
+      await this.cacheManager.set(`forget_${normalizedEmail}`, verificationCode, 86400000);
 
       await this.sendVerificationEmail(normalizedEmail, verificationCode);
 
@@ -166,29 +165,62 @@ export class AuthService {
     }
   }
 
-  async verifyForgetPassword(email: string, code: string, newPassword: string): Promise<AuthResponse> {
-    console.log('Verifying forget password for email:', email, 'with code:', code);
+  async verifyForgetPassword(email: string, code: string): Promise<AuthResponse> {
     try {
       const normalizedEmail = email.trim().toLowerCase();
       const cachedCode  = await this.cacheManager.get(`forget_${normalizedEmail}`);
-      console.log('Cached code:', cachedCode,code);
+  
       if(!cachedCode || cachedCode!== code) {
-        return {state: false, message: 'Invalid or expired verification code'};
+        return {state: false, message: 'Invalid or expired verification code. Please try again.'};
       }
-      const hashedNewPassword= await bcrypt.hash(newPassword, this.SALT_ROUNDS);
-      await this.userModel.findOneAndUpdate({email}, {password: hashedNewPassword});
-      await this.cacheManager.del(`forget_${email}`);
       return {
         state: true,
-        message: 'Password reset successfully',
+        message: 'Validation successful, you can now reset your password',
       }
 
     } catch(err) {
-      this.logger.error(`Verify forget password failed for email_${email}`, err);
+      this.logger.error(`Failed to Verify Code _${email}`, err);
       return { state: false, message: " Password reset failed due to server issues"}
 
     }
   }
+
+
+async setNewPassword(email: string, newPassword: string): Promise<AuthResponse> {
+    const normalizedEmail = email.trim().toLowerCase();
+    
+    try {
+        const hashedNewPassword = await bcrypt.hash(newPassword, this.SALT_ROUNDS);
+        
+        const result = await this.userModel.findOneAndUpdate(
+            { email: normalizedEmail },
+            { password: hashedNewPassword },
+            { new: true } // Returns the updated document
+        );
+
+        if (!result) {
+            this.logger.error(`User not found with email: ${email}`);
+            return { 
+                state: false, 
+                message: "Password reset failed - user not found" 
+            };
+        }
+
+        await this.cacheManager.del(`forget_${normalizedEmail}`);
+        
+        return {
+            state: true,
+            message: "Your new password was successfully set"
+        };
+
+    } catch (err) {
+        this.logger.error(`Failed to set new password for ${email}`, err);
+        return { 
+            state: false, 
+            message: "Password reset failed due to server issues" 
+        };
+    }
+}
 
 
   private generateToken(user: UserDocument | { _id: string }): { accessToken: string } {
