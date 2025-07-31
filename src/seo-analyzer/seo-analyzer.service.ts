@@ -88,6 +88,7 @@ export class SeoAnalyzerService {
       const analysis = await this.analysisModel.create(
         [
           {
+            name: url.split('/').pop() || url, // Derive name from URL or use a default
             url,
             brokenLinks,
             oversizedImages,

@@ -8,7 +8,7 @@ export class Analysis {
     @Prop({required: true})
     url: string;
 
-    @Prop({ required: true})
+    @Prop()
     name: string
 
     @Prop({type: [String], default: []})
