@@ -144,15 +144,17 @@ export class AuthService {
   }
   async forgetPassword(email: string): Promise<AuthResponse> {
     try {
-      const user = await this.userModel.findOne({ email }).lean();
+      const normalizedEmail = email.trim().toLowerCase();
+      const user = await this.userModel.findOne({ email: normalizedEmail }).lean();
       if (!user) {
         return { state: false, message: 'Email not found' };
       }
 
       const verificationCode = this.generateVerificationCode();
-      await this.cacheManager.set(`forget_${email}`, verificationCode, 3600); // Cache for 1 hour
+      console.log('Generated verification code:', verificationCode);
+      await this.cacheManager.set(`forget_${normalizedEmail}`, verificationCode, 3600 * 1000);
 
-      await this.sendVerificationEmail(email, verificationCode);
+      await this.sendVerificationEmail(normalizedEmail, verificationCode);
 
       return {
         state: true,
@@ -165,8 +167,11 @@ export class AuthService {
   }
 
   async verifyForgetPassword(email: string, code: string, newPassword: string): Promise<AuthResponse> {
+    console.log('Verifying forget password for email:', email, 'with code:', code);
     try {
-      const cachedCode  = await this.cacheManager.get(`forget_${email}`);
+      const normalizedEmail = email.trim().toLowerCase();
+      const cachedCode  = await this.cacheManager.get(`forget_${normalizedEmail}`);
+      console.log('Cached code:', cachedCode,code);
       if(!cachedCode || cachedCode!== code) {
         return {state: false, message: 'Invalid or expired verification code'};
       }
@@ -217,6 +222,7 @@ export class AuthService {
   private generateVerificationCode(): string {
     return Math.floor(100000 + Math.random() * 900000).toString();
   }
+
 
   private async sendVerificationEmail(email: string, code: string): Promise<void> {
     const transporter = nodemailer.createTransport({
@@ -309,6 +315,10 @@ export class AuthService {
     };
     await transporter.sendMail(mailOptions);
   }
+
+
+
+
 
  
 }
