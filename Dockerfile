@@ -26,9 +26,14 @@ RUN apt-get update && apt-get install -y \
     xdg-utils \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
+
+
+
 # Set Puppeteer executable path
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+# Install Chromium
 
+RUN apt-get update && apt-get install -y chromium
 # Set working directory
 WORKDIR /opt/render/project/src
 
