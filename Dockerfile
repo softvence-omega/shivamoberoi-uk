@@ -1,6 +1,6 @@
 FROM node:22.16.0
 
-# Install Chromium and its dependencies
+# Install Chromium and dependencies needed for Puppeteer in one RUN
 RUN apt-get update && apt-get install -y \
     chromium \
     fonts-liberation \
@@ -26,34 +26,29 @@ RUN apt-get update && apt-get install -y \
     xdg-utils \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-
-
-
 # Set Puppeteer executable path
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
-# Install Chromium
 
-RUN apt-get update && apt-get install -y chromium
 # Set working directory
 WORKDIR /opt/render/project/src
 
-
-# Copy package.json and package-lock.json
+# Copy package.json and package-lock.json first (for better caching)
 COPY package*.json ./
 
-# Install dependencies
+# Install dependencies cleanly (npm ci preferred for reproducible builds)
 RUN npm ci
 
-COPY package*.json ./
-RUN npm install -g @nestjs/cli && npm install
+# Install Nest CLI globally (optional; if you need it inside container)
+RUN npm install -g @nestjs/cli
 
-# Copy the rest of the application
+# Copy the rest of your application files
 COPY . .
 
-# Build the application
+# Build your NestJS app
 RUN npm run build
-# Expose the port your app runs on
+
+# Expose the app port
 EXPOSE 3000
 
-# Start the application
+# Start the app
 CMD ["npm", "run", "start:prod"]
