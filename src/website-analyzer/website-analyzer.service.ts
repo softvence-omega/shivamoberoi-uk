@@ -110,7 +110,7 @@ export class WebsiteAnalyzerService {
     return result;
   }
 
-  async searchKeywords(url: string, skip: number = 0, limit: number = 10): Promise<any> {
+  async searchKeywords(url: string, skip: number = 0, limit: number = 20): Promise<any> {
 const cacheKey = `keywords_${url}_${skip}_${limit}`;
     const cached = await this.cacheManager.get(cacheKey);
     if (cached) return cached;
@@ -139,7 +139,7 @@ const cacheKey = `keywords_${url}_${skip}_${limit}`;
 
     // for (const chunkData of chunks) {
     //   keywordResults.push({ keywords: chunkData });
-    //   await new Promise(resolve => setTimeout(resolve, 100)); // Simulate async delay
+    //   await new Promise(resolve => setTimeout(resolve, 100)); // Simulate async delays
     // }
 
 const keywordResults: KeywordMetrics[] = paginatedKeywords.map(keyword => {
