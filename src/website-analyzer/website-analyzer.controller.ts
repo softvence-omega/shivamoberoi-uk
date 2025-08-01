@@ -68,7 +68,7 @@ export class WebsiteAnalyzerController {
 
   @Post('login')
   async login(@Body(ValidationPipe) loginDto: LoginDto) {
-    return this.authService.login(loginDto.username, loginDto.password);
+    return this.authService.login(loginDto.email, loginDto.password);
   }
 
   @Post('change-password')

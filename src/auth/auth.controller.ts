@@ -31,7 +31,7 @@ export class AuthController {
   @Post('login')
   @UsePipes(new ValidationPipe({ transform: true }))
   async login(@Body() loginDto: LoginDto): Promise<AuthResponse> {
-    return this.authService.login(loginDto.username, loginDto.password);
+    return this.authService.login(loginDto.email, loginDto.password);
   }
 
   @Post('change-password')

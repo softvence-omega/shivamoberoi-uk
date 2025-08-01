@@ -85,12 +85,12 @@ export class AuthService {
   }
 
   async login(
-    username: string,
+    email: string,
     password: string,
   ): Promise<AuthResponse> {
     try {
       const user = await this.userModel
-        .findOne({ username: username.trim() })
+        .findOne({ email: email.trim() })
         .select('+password')
         .lean();
 
@@ -110,7 +110,7 @@ export class AuthService {
         user: userWithoutPassword
       };
     } catch (error) {
-      this.logger.error(`Login failed for ${username}`, error.stack);
+      this.logger.error(`Login failed for ${email}`, error.stack);
       return {
         state: false,
         message: 'Login failed due to server error'
