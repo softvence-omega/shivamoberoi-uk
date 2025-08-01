@@ -51,7 +51,7 @@ export class CrawlerService implements OnModuleDestroy, OnModuleInit {
         ],
         timeout: this.CRAWL_TIMEOUT,
         executablePath: process.env.RENDER
-          ? '/usr/bin/chromium-browser'
+          ? '/usr/bin/chromium'
           : undefined,
       });
       for (let i = 0; i < this.MAX_CONCURRENT_PAGES; i++) {
