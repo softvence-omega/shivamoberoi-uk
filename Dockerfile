@@ -37,17 +37,23 @@ RUN apt-get update && apt-get install -y chromium
 # Set working directory
 WORKDIR /opt/render/project/src
 
+
 # Copy package.json and package-lock.json
 COPY package*.json ./
 
 # Install dependencies
 RUN npm ci
 
+COPY package*.json ./
+RUN npm install -g @nestjs/cli && npm install
+
 # Copy the rest of the application
 COPY . .
 
 # Build the application
 RUN npm run build
+# Expose the port your app runs on
+EXPOSE 3000
 
 # Start the application
 CMD ["npm", "run", "start:prod"]
