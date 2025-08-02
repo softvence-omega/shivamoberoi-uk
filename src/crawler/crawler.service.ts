@@ -15,7 +15,8 @@ import { Image, ImageDocument } from '../schemas/image.schema';
 import puppeteer, { Browser, Page as PuppeteerPage } from 'puppeteer';
 import axios from 'axios';
 import { analyzeImage } from '../utils/image-analyzer';
-import fs from 'fs';
+import * as fs from 'fs';
+
 import path from 'path';
 
 @Injectable()
