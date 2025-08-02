@@ -23,6 +23,9 @@ export class Page {
   @Prop({ type: [String], default: [] })
   headings: string[];
 
+  @Prop([String])
+  keywords: string[];
+
   @Prop({ required: true })
   loadTime: number;
 

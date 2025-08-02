@@ -31,7 +31,7 @@ export class WebsiteAnalyzerController {
     private readonly websiteAnalyzerService: WebsiteAnalyzerService,
     private authService: AuthService,
     private migrationService: MigrationService,
-  ) { }
+  ) {}
 
   @Get('website')
   // @UseGuards(AuthGuard('jwt'))
@@ -82,7 +82,10 @@ export class WebsiteAnalyzerController {
     console.log('Full request object:', req);
     console.log('req.user:', req.user);
     if (!req.user?.sub) {
-      console.log('Authentication failed, checking headers:', req.headers.authorization);
+      console.log(
+        'Authentication failed, checking headers:',
+        req.headers.authorization,
+      );
       throw new UnauthorizedException(
         'Authentication failed: user.sub is undefined',
       );
@@ -110,9 +113,15 @@ export class WebsiteAnalyzerController {
   ) {
     return this.authService.verifyForgetPassword(
       verifyForgetPasswordDto.email,
-      verifyForgetPasswordDto.code
+      verifyForgetPasswordDto.code,
     );
   }
+  //   @Post('clear-cache')
+  // @ApiBearerAuth()
+  // async clearCache(@Query('url') url?: string) {
+  //   await this.websiteAnalyzerService.clearCache(url);
+  //   return { status: 'success', message: 'Cache cleared' };
+  // }
 
   @Post('set-new-password')
   async setNewPassword(
@@ -120,7 +129,7 @@ export class WebsiteAnalyzerController {
   ) {
     return this.authService.setNewPassword(
       setNewPasswordDto.email,
-      setNewPasswordDto.newPassword
+      setNewPasswordDto.newPassword,
     );
   }
 

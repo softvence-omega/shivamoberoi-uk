@@ -15,10 +15,10 @@ import { ContentAiModule } from './ai/content-ai.module';
 import { WebsiteAnalyzerModule } from './website-analyzer/website-analyzer.module';
 import { MigrationService } from './migration.service';
 import { Migration001 } from './migrations/001-initial-setup';
-import {User, UserSchema } from './schemas/user.schema';
-import {Page,  PageSchema } from './schemas/page.schema';
+import { User, UserSchema } from './schemas/user.schema';
+import { Page, PageSchema } from './schemas/page.schema';
 import { Link, LinkSchema } from './schemas/link.schema';
-import { Image,ImageSchema } from './schemas/image.schema';
+import { Image, ImageSchema } from './schemas/image.schema';
 import { Analysis, AnalysisSchema } from './schemas/analysis.schema';
 import { Content, ContentSchema } from './schemas/content.schema';
 import { MigrationSchema } from './schemas/migrations.schema';
@@ -27,7 +27,8 @@ import { CrawlerController } from './crawler/crawler.controller';
 import { HttpModule } from '@nestjs/axios';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
- 
+// import { ThrottlerModule } from '@nestjs/throttler';
+
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -51,7 +52,7 @@ import { AppService } from './app.service';
       }),
       inject: [ConfigService],
     }),
-        MongooseModule.forFeature([
+    MongooseModule.forFeature([
       { name: User.name, schema: UserSchema },
       { name: Page.name, schema: PageSchema },
       { name: Link.name, schema: LinkSchema },
@@ -60,7 +61,7 @@ import { AppService } from './app.service';
       { name: Content.name, schema: ContentSchema },
       { name: Migration.name, schema: MigrationSchema },
     ]),
-
+    // ThrottlerModule.forRoot({ ttl: 60, limit: 10 }),
     HttpModule,
     AuthModule,
     CrawlerModule,
@@ -68,10 +69,12 @@ import { AppService } from './app.service';
     ContentAiModule,
     DiscoveryModule,
     WebsiteAnalyzerModule,
- 
   ],
   controllers: [AppController, CrawlerController, SeoAnalyzerController],
-  providers: [AppService, CrawlerService, SeoAnalyzerService,
+  providers: [
+    AppService,
+    CrawlerService,
+    SeoAnalyzerService,
     MigrationService,
     {
       provide: 'MIGRATION_PROVIDERS',
@@ -84,4 +87,3 @@ export class AppModule {
     this.migrationService.runMigrations();
   }
 }
-

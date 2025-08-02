@@ -18,7 +18,7 @@ import { firstValueFrom } from 'rxjs';
 
 export interface CachedSeoAnalysis {
   url: string;
-  brokenLinks: string[];
+  websiteLink: string[];
   oversizedImages: string[];
   blurryImages: string[];
   analyzedAt: Date;
@@ -82,7 +82,7 @@ export class SeoAnalyzerService {
         this.imageModel.find({ sourceUrl: url }).session(session).lean().exec(),
       ]);
 
-      const brokenLinks = await this.processLinks(links, session);
+      const websiteLink = await this.processLinks(links, session);
       const { oversizedImages, blurryImages } = this.analyzeImages(images);
 
       const analysis = await this.analysisModel.create(
@@ -90,7 +90,7 @@ export class SeoAnalyzerService {
           {
             name: url.split('/').pop() || url, // Derive name from URL or use a default
             url,
-            brokenLinks,
+            websiteLink,
             oversizedImages,
             blurryImages,
             analyzedAt: new Date(),
@@ -104,7 +104,7 @@ export class SeoAnalyzerService {
 
       const result: CachedSeoAnalysis = {
         url,
-        brokenLinks,
+        websiteLink,
         oversizedImages,
         blurryImages,
         analyzedAt: analysis[0].analyzedAt,

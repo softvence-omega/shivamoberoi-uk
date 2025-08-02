@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: shivamoberoi-uk
+    runtime: node
+    buildCommand: |
+      apt-get update && \
+      apt-get install -y chromium fonts-liberation libappindicator3-1 libasound2 libatk-bridge2.0-0 libcups2 libgbm1 libnspr4 libnss3 libxss1 xdg-utils && \
+      npm install
+    startCommand: npm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
