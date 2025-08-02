@@ -15,6 +15,8 @@ import { Image, ImageDocument } from '../schemas/image.schema';
 import puppeteer, { Browser, Page as PuppeteerPage } from 'puppeteer';
 import axios from 'axios';
 import { analyzeImage } from '../utils/image-analyzer';
+import fs from 'fs';
+import path from 'path';
 
 @Injectable()
 export class CrawlerService implements OnModuleDestroy, OnModuleInit {
@@ -38,27 +40,55 @@ export class CrawlerService implements OnModuleDestroy, OnModuleInit {
   async onModuleInit() {
     await this.initializeBrowser();
   }
+private async initializeBrowser() {
+  if (this.browser) return;
 
-  private async initializeBrowser() {
-    if (!this.browser) {
-      this.browser = await puppeteer.launch({
-        
-        headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-        ],
-        timeout: this.CRAWL_TIMEOUT,
-        executablePath: process.env.RENDER
-          ? '/usr/bin/chromium'
-          : undefined,
-      });
-      for (let i = 0; i < this.MAX_CONCURRENT_PAGES; i++) {
-        this.pagePool.push(await this.browser.newPage());
+  let executablePath: string | undefined = undefined;
+
+  // Try to set the correct executable path based on environment
+  if (process.env.RENDER) {
+    const possiblePaths = [
+      '/usr/bin/chromium',
+      '/usr/bin/chromium-browser',
+      '/usr/bin/google-chrome',
+    ];
+
+    for (const p of possiblePaths) {
+      if (fs.existsSync(p)) {
+        executablePath = p;
+        console.log(`✅ Chromium found at: ${p}`);
+        break;
       }
     }
+
+    if (!executablePath) {
+      console.error(' Chromium not found in any known path!');
+      throw new Error('Chromium executable not found');
+    }
   }
+
+  try {
+    this.browser = await puppeteer.launch({
+      headless: true,
+      args: [
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-dev-shm-usage',
+      ],
+      timeout: this.CRAWL_TIMEOUT,
+      executablePath, // undefined if local — puppeteer will use bundled Chromium
+    });
+
+    for (let i = 0; i < this.MAX_CONCURRENT_PAGES; i++) {
+      this.pagePool.push(await this.browser.newPage());
+    }
+
+    console.log('Puppeteer browser launched successfully');
+  } catch (err) {
+    console.error('Failed to launch Puppeteer:', err);
+    throw err;
+  }
+}
 
   async startCrawling(
     startUrl: string,
