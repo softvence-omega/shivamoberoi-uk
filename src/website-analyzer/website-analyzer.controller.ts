@@ -39,7 +39,7 @@ export class WebsiteAnalyzerController {
   async analyzeWebsite(
     @Query(ValidationPipe) { url }: { url: string },
     @Query('page') page: number = 1,
-    @Query('limit') limit: number = 10,
+    @Query('limit') limit: number = 20,
   ) {
     const skip = (page - 1) * limit;
     return this.websiteAnalyzerService.analyzeWebsite(url, skip, limit);
@@ -51,7 +51,7 @@ export class WebsiteAnalyzerController {
   async searchKeywords(
     @Query(ValidationPipe) { url }: { url: string },
     @Query('page') page: number = 1,
-    @Query('limit') limit: number = 10,
+    @Query('limit') limit: number = 20,
   ) {
     const skip = (page - 1) * limit;
     return this.websiteAnalyzerService.searchKeywords(url, skip, limit);
