@@ -18,7 +18,7 @@ import { firstValueFrom } from 'rxjs';
 
 export interface CachedSeoAnalysis {
   url: string;
-  brokenLinks: string[];
+  websiteLinks: string[];
   oversizedImages: string[];
   blurryImages: string[];
   analyzedAt: Date;
@@ -82,7 +82,7 @@ export class SeoAnalyzerService {
         this.imageModel.find({ sourceUrl: url }).session(session).lean().exec(),
       ]);
 
-      const brokenLinks = await this.processLinks(links, session);
+      const websiteLinks = await this.processLinks(links, session);
       const { oversizedImages, blurryImages } = this.analyzeImages(images);
 
       const analysis = await this.analysisModel.create(
@@ -90,7 +90,7 @@ export class SeoAnalyzerService {
           {
             name: url.split('/').pop() || url, // Derive name from URL or use a default
             url,
-            brokenLinks,
+            websiteLinks,
             oversizedImages,
             blurryImages,
             analyzedAt: new Date(),
@@ -104,7 +104,7 @@ export class SeoAnalyzerService {
 
       const result: CachedSeoAnalysis = {
         url,
-        brokenLinks,
+        websiteLinks,
         oversizedImages,
         blurryImages,
         analyzedAt: analysis[0].analyzedAt,
@@ -212,7 +212,7 @@ export class SeoAnalyzerService {
     links: LinkDocument[],
     session: ClientSession,
   ): Promise<string[]> {
-    const brokenLinks: string[] = [];
+    const websiteLinks: string[] = [];
     const linkCheckPromises: Promise<void>[] = [];
     const activeChecks = new Set<string>();
 
@@ -233,7 +233,7 @@ export class SeoAnalyzerService {
               { session },
             );
             if (status >= 400) {
-              brokenLinks.push(link.url);
+              websiteLinks.push(link.url);
             }
           } catch (error) {
             this.logger.error(`Failed to update link ${link.url}: ${error.message}`);
@@ -248,7 +248,7 @@ export class SeoAnalyzerService {
     }
 
     await Promise.all(linkCheckPromises);
-    return brokenLinks;
+    return websiteLinks;
   }
 
  private async checkLinkStatus(link: LinkDocument): Promise<boolean> {
