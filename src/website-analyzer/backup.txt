@@ -69,3 +69,8 @@ export class WebsiteAnalyzerController {
     return { status: 'success', message: 'Migrations applied' };
   }
 }
+
+/////////////=============
+
+rm -rf dist
+npm run build

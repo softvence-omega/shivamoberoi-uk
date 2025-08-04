@@ -28,6 +28,8 @@ import { HttpModule } from '@nestjs/axios';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { BrokenLinksModule } from './broken-link/broken-link.module';
+import { CombinedAnalyzerModule } from './combined-analyzer/combined-analyzer.module';
+
 // import { ThrottlerModule } from '@nestjs/throttler';
 
 @Module({
@@ -71,6 +73,7 @@ import { BrokenLinksModule } from './broken-link/broken-link.module';
     DiscoveryModule,
     BrokenLinksModule,
     WebsiteAnalyzerModule,
+    CombinedAnalyzerModule,
   ],
   controllers: [AppController, CrawlerController, SeoAnalyzerController],
   providers: [
