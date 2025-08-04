@@ -27,6 +27,7 @@ import { CrawlerController } from './crawler/crawler.controller';
 import { HttpModule } from '@nestjs/axios';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { BrokenLinksModule } from './broken-link/broken-link.module';
 // import { ThrottlerModule } from '@nestjs/throttler';
 
 @Module({
@@ -68,6 +69,7 @@ import { AppService } from './app.service';
     SeoModule,
     ContentAiModule,
     DiscoveryModule,
+    BrokenLinksModule,
     WebsiteAnalyzerModule,
   ],
   controllers: [AppController, CrawlerController, SeoAnalyzerController],

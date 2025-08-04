@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document } from 'mongoose';
+import { Document, Schema as MongooseSchema } from 'mongoose';
 
 export type BrokenLinkDocument = BrokenLink & Document;
 
@@ -11,7 +11,7 @@ export class BrokenLink {
   @Prop({ required: true })
   baseUrl: string;
 
-  @Prop()
+  @Prop({ type: MongooseSchema.Types.Mixed })
   status: number | string;
 
   @Prop()

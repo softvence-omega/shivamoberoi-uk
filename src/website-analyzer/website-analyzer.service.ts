@@ -95,7 +95,7 @@ export class WebsiteAnalyzerService {
       this.logger.log(`Crawling page: ${url}`);
 
       try {
-        const linkedUrls = await this.crawlAndAnlyze(url);
+        const linkedUrls = await this.crawlAndAnalyze(url);
         for (const link of linkedUrls) {
           if (link.startsWith(baseUrl) && !visitedPages.has(link)) {
             allLinks.add(link);
