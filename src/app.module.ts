@@ -28,7 +28,7 @@ import { HttpModule } from '@nestjs/axios';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { BrokenLinksModule } from './broken-link/broken-link.module';
-import { CombinedAnalyzerModule } from './combined-analyzer/combined-analyzer.module';
+// import { CombinedAnalyzerModule } from './combined-analyzer/combined-analyzer.module';
 
 // import { ThrottlerModule } from '@nestjs/throttler';
 
@@ -73,7 +73,7 @@ import { CombinedAnalyzerModule } from './combined-analyzer/combined-analyzer.mo
     DiscoveryModule,
     BrokenLinksModule,
     WebsiteAnalyzerModule,
-    CombinedAnalyzerModule,
+    // CombinedAnalyzerModule,
   ],
   controllers: [AppController, CrawlerController, SeoAnalyzerController],
   providers: [
