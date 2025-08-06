@@ -3,7 +3,7 @@ import { Document, Schema as MongooseSchema } from 'mongoose';
 
 export type BrokenLinkDocument = BrokenLink & Document;
 
-@Schema()
+@Schema({ timestamps: true })
 export class BrokenLink {
   @Prop({ required: true })
   url: string;
@@ -11,13 +11,19 @@ export class BrokenLink {
   @Prop({ required: true })
   baseUrl: string;
 
-  @Prop({ type: MongooseSchema.Types.Mixed })
+  @Prop({ required: true, enum: ['internal', 'external'] })
+  linkType: string;
+
+  @Prop({ type: MongooseSchema.Types.Mixed, required: true })
   status: number | string;
 
-  @Prop()
-  sourcePage: string;
+  @Prop({ type: [String], default: [] })
+  sourcePages: string[];
 
   @Prop()
+  reason?: string;
+
+  @Prop({ required: true })
   checkedAt: Date;
 }
 
