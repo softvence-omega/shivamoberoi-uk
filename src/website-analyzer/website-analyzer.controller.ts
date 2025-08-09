@@ -42,7 +42,7 @@ export class WebsiteAnalyzerController {
     @Query('limit') limit: number = 10,
   ) {
     const skip = (page - 1) * limit;
-    return this.websiteAnalyzerService.analyzeWebsite(url, skip, limit);
+    return this.websiteAnalyzerService.analyzeWebsite(url);
   }
 
   @Get('keywords')

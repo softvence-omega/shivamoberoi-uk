@@ -6,11 +6,28 @@ import { InjectModel } from '@nestjs/mongoose';
 import { Page, PageDocument } from '../schemas/page.schema';
 import { Model } from 'mongoose';
 import { chunk } from 'lodash';
+import { ApiError } from 'src/broken-link/brokenlink.interface';
 
 interface SeoAnalysis {
   seoScore: number;
 }
-
+export interface WebsiteAnalysisResult {
+  status: 'success' | 'error';
+  message: string;
+  data: {
+    url: string;
+    seoScore: number;
+    authorityScore: number;
+    organicTraffic: number;
+    organicKeywords: number;
+    paidKeywords: number;
+    backlinks: number;
+    siteHealth: number;
+    analysisDate: string;
+    metaDescription: string;
+    totalHeadings: number;
+  };
+}
 interface KeywordMetrics {
   keyword: string;
   intent: string;
@@ -173,88 +190,84 @@ export class WebsiteAnalyzerService {
     }
   }
 
-  async analyzeWebsite(
-    url: string,
-    skip: number = 0,
-    limit: number = 10,
-  ): Promise<any> {
-    const cacheKey = `website_${url}_${skip}_${limit}`;
-    const cached = await this.cacheManager.get(cacheKey);
+  async analyzeWebsite(url: string): Promise<WebsiteAnalysisResult | ApiError> {
+    const cacheKey = `website_${url}`;
+    const cached = await this.cacheManager.get<WebsiteAnalysisResult | ApiError>(cacheKey);
     if (cached) return cached;
 
-    let pageDoc = await this.pageModel.findOne({ url }).exec();
-    if (!pageDoc) {
-      await this.crawlAndAnalyze(url);
-      pageDoc = await this.pageModel.findOne({ url }).exec();
-      if (!pageDoc) throw new Error(`Failed to crawl ${url}`);
-    }
+    try {
+      let pageDoc = await this.pageModel.findOne({ url }).exec();
+      if (!pageDoc) {
+        await this.crawlAndAnalyze(url);
+        pageDoc = await this.pageModel.findOne({ url }).exec();
+        if (!pageDoc) {
+          return { status: 'error', message: `Failed to crawl ${url}` };
+        }
+      }
 
-    // Paginate the headings for analysis
-    const totalHeadings = pageDoc.headings.length;
-    const paginatedHeadings = pageDoc.headings.slice(skip, skip + limit);
+      const headings = pageDoc.headings;
+      const totalHeadings = headings.length;
+      const chunks = chunk(headings, this.chunkSize);
+      const analysisResults: SeoAnalysis[] = [];
 
-    // Process headings in chunks
-    const chunks = chunk(paginatedHeadings, this.chunkSize);
-    const analysisResults: SeoAnalysis[] = [];
+      for (const chunkData of chunks) {
+        const chunkAnalysis = this.calculateSeoScoreForChunk(
+          chunkData,
+          pageDoc.metaTags.length > 0,
+          pageDoc.linkedUrls.length,
+          pageDoc,
+        );
+        analysisResults.push(chunkAnalysis);
+        await new Promise((resolve) => setTimeout(resolve, 100));
+      }
 
-    for (const chunkData of chunks) {
-      const chunkAnalysis: SeoAnalysis = this.calculateSeoScoreForChunk(
-        chunkData,
-        pageDoc.metaTags.length > 0,
-        pageDoc.linkedUrls.length,
-        pageDoc,
+      const seoScore = analysisResults.length
+        ? Math.round(analysisResults.reduce((sum, a) => sum + a.seoScore, 0) / analysisResults.length)
+        : 0;
+      const siteHealth = this.calculateSiteHealth(pageDoc.loadTime, pageDoc.imageUrls.length);
+      const internalLinksCount = pageDoc.linkedUrls.length;
+      const metaDescription =
+        pageDoc.metaTags.find((tag) => tag.name === 'description')?.content || 'No meta description';
+      const estimatedBacklinks = this.estimateBacklinks(
+        internalLinksCount,
+        this.estimateAuthority(internalLinksCount),
       );
-      analysisResults.push(chunkAnalysis);
-      await new Promise((resolve) => setTimeout(resolve, 100)); // Simulate async delay
+      const organicKeywordsCount = this.countKeywords(headings);
+      const estimatedPaidKeywords = this.estimatePaidKeywords(
+        organicKeywordsCount,
+        this.estimateAuthority(internalLinksCount),
+      );
+
+      const result: WebsiteAnalysisResult = {
+        status: 'success',
+        message: 'Analysis completed successfully',
+        data: {
+          url,
+          seoScore,
+          authorityScore: this.estimateAuthority(internalLinksCount),
+          organicTraffic: this.estimateTraffic(internalLinksCount),
+          organicKeywords: organicKeywordsCount,
+          paidKeywords: estimatedPaidKeywords,
+          backlinks: estimatedBacklinks,
+          siteHealth,
+          analysisDate: new Date().toISOString().split('T')[0],
+          metaDescription,
+          totalHeadings,
+        },
+      };
+
+      await this.cacheManager.set(cacheKey, result, 3600);
+      return result;
+    } catch (error) {
+      this.logger.error(`Analysis failed for ${url}: ${error.message}`, error.stack);
+      return {
+        status: 'error',
+        message: 'Failed to analyze website',
+        error: error.message,
+      };
     }
-
-    const seoScore = Math.round(
-      analysisResults.reduce((sum, a) => sum + a.seoScore, 0) / chunks.length,
-    );
-    const siteHealth = this.calculateSiteHealth(
-      pageDoc.loadTime,
-      pageDoc.imageUrls.length,
-    );
-    const internalLinksCount = pageDoc.linkedUrls.length;
-    const metaDescription =
-      pageDoc.metaTags.find((tag) => tag.name === 'description')?.content ||
-      'No meta description';
-
-    // Estimate backlinks and paid keywords
-    const estimatedBacklinks = this.estimateBacklinks(
-      internalLinksCount,
-      this.estimateAuthority(internalLinksCount),
-    );
-    const organicKeywordsCount = this.countKeywords(paginatedHeadings);
-    const estimatedPaidKeywords = this.estimatePaidKeywords(
-      organicKeywordsCount,
-      this.estimateAuthority(internalLinksCount),
-    );
-
-    const result = {
-      status: 'success',
-      message: 'Analysis completed successfully',
-      data: {
-        url,
-        seoScore,
-        authorityScore: this.estimateAuthority(internalLinksCount),
-        organicTraffic: this.estimateTraffic(internalLinksCount),
-        organicKeywords: organicKeywordsCount,
-        paidKeywords: estimatedPaidKeywords,
-        backlinks: estimatedBacklinks,
-        siteHealth,
-        analysisDate: new Date().toISOString().split('T')[0],
-        metaDescription,
-        totalHeadings,
-        page: Math.floor(skip / limit) + 1,
-        limit,
-        totalPages: Math.ceil(totalHeadings / limit),
-      },
-    };
-
-    await this.cacheManager.set(cacheKey, result, 3600);
-    return result;
   }
+
 
    
 
